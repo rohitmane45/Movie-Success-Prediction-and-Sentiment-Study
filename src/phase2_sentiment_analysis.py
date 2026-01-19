@@ -11,6 +11,8 @@ Step-by-step implementation with explanations:
 """
 
 import pandas as pd
+import numpy as np
+import re
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
@@ -21,7 +23,41 @@ try:
     nltk.data.find('vader_lexicon')
 except LookupError:
     print("Downloading VADER lexicon...")
-    nltk.download('vader_lexicon')
+    nltk.download('vader_lexicon', quiet=True)
+
+
+def clean_text(text):
+    """
+    Clean and normalize text for sentiment analysis.
+    
+    Why we are doing this: Raw text often contains noise (HTML, URLs, special chars)
+    that can confuse the sentiment analyzer. Cleaning ensures more accurate scores.
+    
+    Args:
+        text (str): Raw text input
+        
+    Returns:
+        str: Cleaned text
+    """
+    if pd.isna(text) or not isinstance(text, str):
+        return ""
+    
+    # Convert to string and lowercase
+    text = str(text).lower()
+    
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    
+    # Remove URLs
+    text = re.sub(r'http\S+|www\S+', '', text)
+    
+    # Remove special characters but keep punctuation (important for VADER)
+    text = re.sub(r'[^\w\s!?.,\'-]', '', text)
+    
+    # Remove extra whitespace
+    text = ' '.join(text.split())
+    
+    return text
 
 def get_sentiment_score(text, analyzer):
     """
@@ -42,11 +78,34 @@ def get_sentiment_score(text, analyzer):
     Returns:
         float: Compound sentiment score (-1 to 1)
     """
-    scores = analyzer.polarity_scores(text)
+    if not text or pd.isna(text):
+        return 0.0
+    
+    scores = analyzer.polarity_scores(str(text))
     return scores['compound']
 
 
-def analyze_sentiment(df, review_column='User_Review'):
+def get_detailed_sentiment(text, analyzer):
+    """
+    Get detailed sentiment breakdown (positive, negative, neutral, compound).
+    
+    Why we are doing this: Sometimes we want to see the full breakdown,
+    not just the compound score, for deeper analysis.
+    
+    Args:
+        text (str): Input text to analyze
+        analyzer: VADER SentimentIntensityAnalyzer instance
+        
+    Returns:
+        dict: Dictionary with pos, neg, neu, compound scores
+    """
+    if not text or pd.isna(text):
+        return {'pos': 0.0, 'neg': 0.0, 'neu': 1.0, 'compound': 0.0}
+    
+    return analyzer.polarity_scores(str(text))
+
+
+def analyze_sentiment(df, review_column='User_Review', add_detailed=False):
     """
     Apply VADER sentiment analysis to a DataFrame column.
     
@@ -58,6 +117,7 @@ def analyze_sentiment(df, review_column='User_Review'):
     Args:
         df (pd.DataFrame): DataFrame containing movie data
         review_column (str): Name of the column containing review text
+        add_detailed (bool): If True, add pos/neg/neu columns too
         
     Returns:
         pd.DataFrame: DataFrame with added 'Sentiment_Score' column
@@ -67,10 +127,41 @@ def analyze_sentiment(df, review_column='User_Review'):
     # Think of this as turning on the machine that will process the text.
     analyzer = SentimentIntensityAnalyzer()
     
-    # Apply sentiment analysis to each review
+    # Handle missing values
+    df[review_column] = df[review_column].fillna('')
+    
+    # Apply sentiment analysis to each review with progress indication
+    total = len(df)
+    print(f"Analyzing sentiment for {total} reviews...")
+    
+    # Apply sentiment analysis
     df['Sentiment_Score'] = df[review_column].apply(
         lambda x: get_sentiment_score(str(x), analyzer)
     )
+    
+    # Add detailed breakdown if requested
+    if add_detailed:
+        detailed = df[review_column].apply(
+            lambda x: get_detailed_sentiment(str(x), analyzer)
+        )
+        df['Sentiment_Positive'] = detailed.apply(lambda x: x['pos'])
+        df['Sentiment_Negative'] = detailed.apply(lambda x: x['neg'])
+        df['Sentiment_Neutral'] = detailed.apply(lambda x: x['neu'])
+    
+    # Add sentiment category for easier interpretation
+    df['Sentiment_Category'] = pd.cut(
+        df['Sentiment_Score'],
+        bins=[-1.01, -0.5, -0.05, 0.05, 0.5, 1.01],
+        labels=['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']
+    )
+    
+    # Print summary statistics
+    print(f"\n--- Sentiment Analysis Summary ---")
+    print(f"Total reviews analyzed: {total}")
+    print(f"Average sentiment: {df['Sentiment_Score'].mean():.3f}")
+    print(f"Sentiment range: {df['Sentiment_Score'].min():.3f} to {df['Sentiment_Score'].max():.3f}")
+    print(f"\nSentiment Distribution:")
+    print(df['Sentiment_Category'].value_counts().sort_index())
     
     return df
 

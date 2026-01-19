@@ -9,6 +9,9 @@ This project demonstrates the full data science pipeline:
 - **Exploratory Data Analysis**: Visualizing relationships between sentiment, revenue, and genres
 - **Predictive Modeling**: Building regression models to predict box office success
 
+For a full “handoff-style” explanation (what we built, why, how to run, and what outputs to expect), see:
+- [HANDOFF_GUIDE.md](HANDOFF_GUIDE.md)
+
 ## Project Structure
 
 ```
@@ -33,11 +36,7 @@ Movie-Success-Prediction-and-Sentiment-Study/
 pip install -r requirements.txt
 ```
 
-3. Download NLTK data (run once):
-```python
-import nltk
-nltk.download('vader_lexicon')
-```
+3. VADER lexicon: this project auto-downloads `vader_lexicon` on first run.
 
 ## Data Sources
 
@@ -73,14 +72,19 @@ You can use datasets from:
 
 ## Usage
 
-Run the complete pipeline:
+Run the complete pipeline (recommended):
 
 ```bash
-python src/phase1_data_acquisition.py
-python src/phase2_sentiment_analysis.py
-python src/phase3_eda.py
-python src/phase4_modeling.py
+python src/main.py --data data/tmdb_5000_movies.csv
 ```
+
+Or run using generated sample data:
+
+```bash
+python src/main.py --sample
+```
+
+You can still run phases individually if you want, but `src/main.py` is the intended end-to-end path.
 
 Or use the Jupyter notebook for interactive analysis:
 ```bash

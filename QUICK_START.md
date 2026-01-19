@@ -42,6 +42,12 @@ This will run all 4 phases using sample data for demonstration.
 python src/main.py --data path/to/your/movies_dataset.csv
 ```
 
+Recommended (TMDB 5000 Movies CSV already included in this repo):
+
+```bash
+python src/main.py --data data/tmdb_5000_movies.csv
+```
+
 ### Option 3: Run Phases Individually
 
 ```bash
@@ -76,13 +82,23 @@ python src/phase4_modeling.py
 - ✓ Correlation heatmap
 - ✓ Correlation statistics
 
+Saved outputs:
+- `results/figures/*.png`
+- `results/genre_analysis.csv`
+
 ### Phase 4: Predictive Modeling
 - ✓ Feature preparation and encoding
 - ✓ Train/test split
 - ✓ Linear Regression model training
 - ✓ Random Forest model training
 - ✓ Model evaluation (MAE, RMSE, R²)
-- ✓ Prediction examples for new movies
+- ✓ Real movie predictions from the dataset (test set)
+- ✓ Prediction examples for new/hypothetical movies
+
+Saved outputs:
+- `models/best_model.pkl`, `models/linear_regression.pkl`, `models/random_forest.pkl`
+- `results/model_comparison.csv`, `results/model_summary.txt`
+- `results/movie_predictions.csv` (all test-set movies with actual vs predicted)
 
 ## Your Dataset Format
 
@@ -93,6 +109,12 @@ If using your own dataset, ensure it has these columns:
 - `Revenue_Millions`: Box office revenue (target variable)
 - `Budget_Millions`: Production budget
 - `Genre`: Movie genre (e.g., "Action", "Drama", "Sci-Fi")
+
+**TMDB dataset notes (supported automatically):**
+- Text: `overview` is used for sentiment if `User_Review` is missing
+- Revenue: `revenue` (raw dollars) is converted to `Revenue_Millions`
+- Budget: `budget` (raw dollars) is converted to `Budget_Millions`
+- Genre: `genres` (JSON list) is converted to a single `Genre` (first genre)
 
 **Optional Columns:**
 - `Movie_Title`: Movie names
@@ -150,6 +172,7 @@ python src/main.py --data data/my_movies_dataset.csv
 For detailed project information, see:
 - `README.md` - Project overview
 - `PROJECT_SUMMARY.md` - Findings and conclusions
+- `HANDOFF_GUIDE.md` - Full handoff documentation (what/why/how/outputs)
 - Individual phase scripts - Detailed code comments explaining each step
 
-Happy analyzing! 🎬📊
+Happy analyzing.

@@ -12,10 +12,61 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import os
+
+# Create figures directory for saving plots
+FIGURES_DIR = 'results/figures'
+
+
+def ensure_figures_dir():
+    """Create figures directory if it doesn't exist."""
+    os.makedirs(FIGURES_DIR, exist_ok=True)
+
+
+def create_sentiment_distribution(df, sentiment_col='Sentiment_Score', save=True):
+    """
+    Create histogram showing distribution of sentiment scores.
+    
+    Why we are doing this: We need to understand how sentiment scores are 
+    distributed across our dataset. Are most movies reviewed positively or negatively?
+    
+    Args:
+        df (pd.DataFrame): DataFrame with sentiment data
+        sentiment_col (str): Column name for sentiment scores
+        save (bool): Whether to save the figure
+    """
+    ensure_figures_dir()
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Create histogram with KDE
+    sns.histplot(data=df, x=sentiment_col, bins=30, kde=True, 
+                color='steelblue', edgecolor='black', alpha=0.7, ax=ax)
+    
+    # Add mean and median lines
+    mean_val = df[sentiment_col].mean()
+    median_val = df[sentiment_col].median()
+    
+    ax.axvline(mean_val, color='red', linestyle='--', linewidth=2, label=f'Mean: {mean_val:.2f}')
+    ax.axvline(median_val, color='green', linestyle='-.', linewidth=2, label=f'Median: {median_val:.2f}')
+    
+    ax.set_xlabel('Sentiment Score', fontsize=12)
+    ax.set_ylabel('Frequency', fontsize=12)
+    ax.set_title('Distribution of Movie Review Sentiments', fontsize=16, fontweight='bold')
+    ax.legend(fontsize=10)
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(f'{FIGURES_DIR}/sentiment_distribution.png', dpi=150, bbox_inches='tight')
+        print(f"[OK] Saved: {FIGURES_DIR}/sentiment_distribution.png")
+    
+    plt.show()
 
 
 def create_scatter_plot(df, sentiment_col='Sentiment_Score', 
-                       revenue_col='Revenue_Millions', genre_col='Genre'):
+                       revenue_col='Revenue_Millions', genre_col='Genre', save=True):
     """
     Create a scatter plot showing relationship between sentiment and revenue.
     
@@ -32,12 +83,21 @@ def create_scatter_plot(df, sentiment_col='Sentiment_Score',
         sentiment_col (str): Column name for sentiment scores
         revenue_col (str): Column name for revenue values
         genre_col (str): Column name for genre (for color coding)
+        save (bool): Whether to save the figure
     """
-    plt.figure(figsize=(10, 6))
+    ensure_figures_dir()
+    
+    plt.figure(figsize=(12, 7))
     
     # Create the scatter plot with genre color coding
-    sns.scatterplot(data=df, x=sentiment_col, y=revenue_col, 
-                   hue=genre_col, s=100, palette='viridis')
+    scatter = sns.scatterplot(data=df, x=sentiment_col, y=revenue_col, 
+                             hue=genre_col, s=100, palette='viridis', alpha=0.7)
+    
+    # Add trend line
+    z = np.polyfit(df[sentiment_col], df[revenue_col], 1)
+    p = np.poly1d(z)
+    x_line = np.linspace(df[sentiment_col].min(), df[sentiment_col].max(), 100)
+    plt.plot(x_line, p(x_line), "r--", linewidth=2, label='Trend Line')
     
     # Add titles and labels
     plt.title('Movie Success: Sentiment vs. Box Office Revenue', fontsize=16, fontweight='bold')
@@ -47,11 +107,16 @@ def create_scatter_plot(df, sentiment_col='Sentiment_Score',
     plt.legend(title='Genre', bbox_to_anchor=(1.05, 1), loc='upper left')
     
     plt.tight_layout()
+    
+    if save:
+        plt.savefig(f'{FIGURES_DIR}/sentiment_vs_revenue.png', dpi=150, bbox_inches='tight')
+        print(f"[OK] Saved: {FIGURES_DIR}/sentiment_vs_revenue.png")
+    
     plt.show()
 
 
 def create_genre_sentiment_bar(df, sentiment_col='Sentiment_Score', 
-                               genre_col='Genre'):
+                               genre_col='Genre', save=True):
     """
     Create a bar chart showing average sentiment by genre.
     
@@ -64,30 +129,85 @@ def create_genre_sentiment_bar(df, sentiment_col='Sentiment_Score',
         df (pd.DataFrame): DataFrame with sentiment and genre data
         sentiment_col (str): Column name for sentiment scores
         genre_col (str): Column name for genre
+        save (bool): Whether to save the figure
     """
-    plt.figure(figsize=(10, 6))
+    ensure_figures_dir()
+    
+    plt.figure(figsize=(12, 6))
     
     # Calculate average sentiment per genre
     genre_sentiment = df.groupby(genre_col)[sentiment_col].mean().reset_index()
     genre_sentiment = genre_sentiment.sort_values(sentiment_col, ascending=False)
     
     # Create the bar chart
-    sns.barplot(data=genre_sentiment, x=genre_col, y=sentiment_col, 
-               palette='viridis')
+    colors = plt.cm.RdYlGn(np.linspace(0.2, 0.8, len(genre_sentiment)))
+    bars = plt.bar(genre_sentiment[genre_col], genre_sentiment[sentiment_col], 
+                   color=colors, edgecolor='black', alpha=0.8)
+    
+    # Add value labels on bars
+    for bar, val in zip(bars, genre_sentiment[sentiment_col]):
+        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02, 
+                f'{val:.2f}', ha='center', va='bottom', fontsize=9, fontweight='bold')
     
     plt.title('Average Sentiment Score by Genre', fontsize=16, fontweight='bold')
     plt.xlabel('Genre', fontsize=12)
     plt.ylabel('Average Sentiment Score', fontsize=12)
     plt.xticks(rotation=45, ha='right')
     plt.grid(True, alpha=0.3, axis='y')
+    plt.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
     
     plt.tight_layout()
+    
+    if save:
+        plt.savefig(f'{FIGURES_DIR}/genre_sentiment.png', dpi=150, bbox_inches='tight')
+        print(f"[OK] Saved: {FIGURES_DIR}/genre_sentiment.png")
+    
     plt.show()
     
     return genre_sentiment
 
 
-def create_correlation_analysis(df, numerical_cols=None):
+def create_genre_revenue_boxplot(df, revenue_col='Revenue_Millions', genre_col='Genre', save=True):
+    """
+    Create boxplot showing revenue distribution by genre.
+    
+    Why we are doing this: Boxplots show not just the average, but the full 
+    distribution including outliers. This helps identify which genres have 
+    the most consistent revenue vs high variance.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with revenue and genre data
+        revenue_col (str): Column name for revenue
+        genre_col (str): Column name for genre
+        save (bool): Whether to save the figure
+    """
+    ensure_figures_dir()
+    
+    plt.figure(figsize=(14, 7))
+    
+    # Order genres by median revenue
+    genre_order = df.groupby(genre_col)[revenue_col].median().sort_values(ascending=False).index
+    
+    # Create boxplot
+    sns.boxplot(data=df, x=genre_col, y=revenue_col, order=genre_order,
+               palette='viridis', showfliers=True)
+    
+    plt.title('Revenue Distribution by Genre', fontsize=16, fontweight='bold')
+    plt.xlabel('Genre', fontsize=12)
+    plt.ylabel('Revenue (Millions $)', fontsize=12)
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(True, alpha=0.3, axis='y')
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(f'{FIGURES_DIR}/genre_revenue_boxplot.png', dpi=150, bbox_inches='tight')
+        print(f"[OK] Saved: {FIGURES_DIR}/genre_revenue_boxplot.png")
+    
+    plt.show()
+
+
+def create_correlation_analysis(df, numerical_cols=None, save=True):
     """
     Calculate and visualize correlation matrix.
     
@@ -102,10 +222,13 @@ def create_correlation_analysis(df, numerical_cols=None):
     Args:
         df (pd.DataFrame): DataFrame with numerical columns
         numerical_cols (list): List of column names to include in correlation
+        save (bool): Whether to save the figure
         
     Returns:
         pd.DataFrame: Correlation matrix
     """
+    ensure_figures_dir()
+    
     if numerical_cols is None:
         numerical_cols = ['Sentiment_Score', 'Revenue_Millions', 'Budget_Millions']
     
@@ -121,19 +244,113 @@ def create_correlation_analysis(df, numerical_cols=None):
     print()
     
     # Visualize the matrix as a heatmap
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(10, 8))
+    
+    mask = np.triu(np.ones_like(correlation, dtype=bool), k=1)
+    
     sns.heatmap(correlation, annot=True, cmap='coolwarm', vmin=-1, vmax=1,
-               square=True, fmt='.2f', cbar_kws={"shrink": 0.8})
-    plt.title('Correlation Heatmap: Sentiment vs. Revenue', 
+               square=True, fmt='.3f', cbar_kws={"shrink": 0.8},
+               linewidths=0.5, annot_kws={"size": 12, "weight": "bold"})
+    
+    plt.title('Correlation Heatmap: Key Movie Metrics', 
              fontsize=16, fontweight='bold')
     plt.tight_layout()
+    
+    if save:
+        plt.savefig(f'{FIGURES_DIR}/correlation_heatmap.png', dpi=150, bbox_inches='tight')
+        print(f"[OK] Saved: {FIGURES_DIR}/correlation_heatmap.png")
+    
     plt.show()
     
     return correlation
 
 
+def create_budget_vs_revenue_plot(df, budget_col='Budget_Millions', 
+                                  revenue_col='Revenue_Millions', 
+                                  sentiment_col='Sentiment_Score', save=True):
+    """
+    Create scatter plot of budget vs revenue, colored by sentiment.
+    
+    Why we are doing this: This shows the relationship between investment (budget)
+    and return (revenue), with sentiment as a third dimension via color.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with budget, revenue, and sentiment data
+        budget_col (str): Column name for budget
+        revenue_col (str): Column name for revenue
+        sentiment_col (str): Column name for sentiment (for coloring)
+        save (bool): Whether to save the figure
+    """
+    ensure_figures_dir()
+    
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    scatter = ax.scatter(df[budget_col], df[revenue_col], 
+                        c=df[sentiment_col], cmap='RdYlGn', 
+                        s=100, alpha=0.7, edgecolors='black', linewidths=0.5)
+    
+    # Add colorbar
+    cbar = plt.colorbar(scatter, ax=ax)
+    cbar.set_label('Sentiment Score', fontsize=12)
+    
+    # Add break-even line (Revenue = Budget)
+    max_val = max(df[budget_col].max(), df[revenue_col].max())
+    ax.plot([0, max_val], [0, max_val], 'k--', linewidth=1.5, 
+           label='Break-even (Revenue = Budget)', alpha=0.7)
+    
+    # Add trend line
+    z = np.polyfit(df[budget_col], df[revenue_col], 1)
+    p = np.poly1d(z)
+    x_line = np.linspace(df[budget_col].min(), df[budget_col].max(), 100)
+    ax.plot(x_line, p(x_line), "b-", linewidth=2, label='Trend Line', alpha=0.7)
+    
+    ax.set_xlabel('Budget (Millions $)', fontsize=12)
+    ax.set_ylabel('Revenue (Millions $)', fontsize=12)
+    ax.set_title('Budget vs Revenue (colored by Sentiment)', fontsize=16, fontweight='bold')
+    ax.legend(loc='upper left')
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(f'{FIGURES_DIR}/budget_vs_revenue.png', dpi=150, bbox_inches='tight')
+        print(f"[OK] Saved: {FIGURES_DIR}/budget_vs_revenue.png")
+    
+    plt.show()
+
+
+def analyze_genre_sentiment(df, sentiment_col='Sentiment_Score', 
+                           revenue_col='Revenue_Millions', genre_col='Genre'):
+    """
+    Perform comprehensive genre-wise sentiment analysis.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with sentiment, revenue, and genre data
+        sentiment_col (str): Column name for sentiment scores
+        revenue_col (str): Column name for revenue
+        genre_col (str): Column name for genre
+        
+    Returns:
+        pd.DataFrame: Genre analysis summary
+    """
+    genre_analysis = df.groupby(genre_col).agg({
+        sentiment_col: ['mean', 'std', 'min', 'max', 'count'],
+        revenue_col: ['mean', 'median', 'std']
+    }).round(2)
+    
+    # Flatten column names
+    genre_analysis.columns = ['_'.join(col).strip() for col in genre_analysis.columns.values]
+    genre_analysis = genre_analysis.reset_index()
+    genre_analysis = genre_analysis.sort_values(f'{sentiment_col}_mean', ascending=False)
+    
+    print("\n=== Genre-wise Sentiment Analysis ===")
+    print(genre_analysis.to_string(index=False))
+    
+    return genre_analysis
+
+
 def perform_eda(df, sentiment_col='Sentiment_Score', 
-               revenue_col='Revenue_Millions', genre_col='Genre'):
+               revenue_col='Revenue_Millions', genre_col='Genre', save_figures=True):
     """
     Perform complete exploratory data analysis.
     
@@ -142,6 +359,7 @@ def perform_eda(df, sentiment_col='Sentiment_Score',
         sentiment_col (str): Column name for sentiment scores
         revenue_col (str): Column name for revenue
         genre_col (str): Column name for genre
+        save_figures (bool): Whether to save all figures
     """
     print("=" * 60)
     print("Phase 3: Exploratory Data Analysis")
@@ -152,49 +370,108 @@ def perform_eda(df, sentiment_col='Sentiment_Score',
     print(f"\nData summary:")
     print(df.describe())
     
-    # Scatter plot
-    print("\nCreating scatter plot...")
-    create_scatter_plot(df, sentiment_col, revenue_col, genre_col)
+    # 1. Sentiment Distribution
+    print("\n" + "-"*50)
+    print("1. Creating sentiment distribution plot...")
+    create_sentiment_distribution(df, sentiment_col, save=save_figures)
     
-    # Genre sentiment analysis
-    print("\nAnalyzing genre-wise sentiment...")
-    genre_sentiment = create_genre_sentiment_bar(df, sentiment_col, genre_col)
+    # 2. Scatter plot - Sentiment vs Revenue
+    print("\n" + "-"*50)
+    print("2. Creating sentiment vs revenue scatter plot...")
+    create_scatter_plot(df, sentiment_col, revenue_col, genre_col, save=save_figures)
+    
+    # 3. Genre sentiment analysis
+    print("\n" + "-"*50)
+    print("3. Analyzing genre-wise sentiment...")
+    genre_sentiment = create_genre_sentiment_bar(df, sentiment_col, genre_col, save=save_figures)
     print("\nGenre Sentiment Summary:")
     print(genre_sentiment)
     
-    # Correlation analysis
-    print("\nPerforming correlation analysis...")
-    correlation = create_correlation_analysis(df)
+    # 4. Genre revenue boxplot
+    print("\n" + "-"*50)
+    print("4. Creating genre revenue boxplot...")
+    create_genre_revenue_boxplot(df, revenue_col, genre_col, save=save_figures)
+    
+    # 5. Budget vs Revenue plot
+    if 'Budget_Millions' in df.columns:
+        print("\n" + "-"*50)
+        print("5. Creating budget vs revenue plot...")
+        create_budget_vs_revenue_plot(df, 'Budget_Millions', revenue_col, sentiment_col, save=save_figures)
+    
+    # 6. Correlation analysis
+    print("\n" + "-"*50)
+    print("6. Performing correlation analysis...")
+    correlation = create_correlation_analysis(df, save=save_figures)
+    
+    # 7. Genre-wise detailed analysis
+    print("\n" + "-"*50)
+    print("7. Performing genre-wise sentiment analysis...")
+    genre_analysis = analyze_genre_sentiment(df, sentiment_col, revenue_col, genre_col)
     
     # Check specific correlation between sentiment and revenue
     if sentiment_col in correlation.columns and revenue_col in correlation.columns:
         sentiment_revenue_corr = correlation.loc[sentiment_col, revenue_col]
-        print(f"\n--- Key Finding ---")
-        print(f"Correlation between Sentiment and Revenue: {sentiment_revenue_corr:.3f}")
+        print(f"\n" + "="*60)
+        print("KEY FINDINGS")
+        print("="*60)
+        print(f"\nCorrelation between Sentiment and Revenue: {sentiment_revenue_corr:.3f}")
         
-        if abs(sentiment_revenue_corr) > 0.3:
+        if abs(sentiment_revenue_corr) > 0.5:
             direction = "positive" if sentiment_revenue_corr > 0 else "negative"
-            strength = "strong" if abs(sentiment_revenue_corr) > 0.7 else "moderate"
-            print(f"This indicates a {strength} {direction} relationship.")
+            print(f"[STRONG] This indicates a strong {direction} relationship!")
+            print("Higher sentiment scores are associated with higher revenue.")
+        elif abs(sentiment_revenue_corr) > 0.3:
+            direction = "positive" if sentiment_revenue_corr > 0 else "negative"
+            print(f"[MODERATE] This indicates a moderate {direction} relationship.")
         else:
-            print("This indicates a weak or no relationship.")
+            print("[WEAK] This indicates a weak or no significant relationship.")
+        
+        # Additional insights
+        if 'Budget_Millions' in correlation.columns:
+            budget_revenue_corr = correlation.loc['Budget_Millions', revenue_col]
+            print(f"\nCorrelation between Budget and Revenue: {budget_revenue_corr:.3f}")
+            if budget_revenue_corr > 0.5:
+                print("[INSIGHT] Budget is a strong predictor of revenue.")
     
-    print("\nPhase 3 completed successfully!")
+    # Save genre analysis to CSV
+    if save_figures:
+        os.makedirs('results', exist_ok=True)
+        genre_analysis.to_csv('results/genre_analysis.csv', index=False)
+        print(f"\n[OK] Saved: results/genre_analysis.csv")
+    
+    print("\n" + "="*60)
+    print("Phase 3 completed successfully!")
+    print("="*60)
+    if save_figures:
+        print(f"\nAll figures saved to: {FIGURES_DIR}/")
 
 
 if __name__ == "__main__":
-    # Example usage with dummy data
-    # In real usage, this data would come from Phase 2 output
+    # Example usage with expanded sample data
+    np.random.seed(42)
+    n_samples = 50
+    
+    genres = ['Sci-Fi', 'Drama', 'Comedy', 'Action', 'Horror', 'Romance', 'Thriller', 'Animation']
     
     data = {
-        'Movie_Title': ['Inception', 'The Room', 'Average Joe', 'Super Hero 5',
-                       'Epic Adventure', 'Dark Thriller', 'Romantic Comedy', 'Sci-Fi Epic'],
-        'Sentiment_Score': [0.9, -0.8, 0.1, 0.5, 0.85, -0.5, 0.2, 0.95],
-        'Revenue_Millions': [800, 0.5, 15, 200, 750, 2, 25, 900],
-        'Budget_Millions': [160, 6, 20, 100, 150, 10, 30, 200],
-        'Genre': ['Sci-Fi', 'Drama', 'Comedy', 'Action', 'Sci-Fi', 'Drama', 
-                 'Comedy', 'Action']
+        'Movie_Title': [f'Movie_{i}' for i in range(n_samples)],
+        'Sentiment_Score': np.random.uniform(-0.8, 0.95, n_samples),
+        'Revenue_Millions': [],
+        'Budget_Millions': np.random.uniform(10, 250, n_samples),
+        'Genre': np.random.choice(genres, n_samples)
     }
+    
+    # Generate correlated revenue based on budget and sentiment
+    for i in range(n_samples):
+        budget = data['Budget_Millions'][i]
+        sentiment = data['Sentiment_Score'][i]
+        sentiment_factor = 0.5 + (sentiment + 1) * 0.5
+        noise = np.random.normal(0, budget * 0.3)
+        revenue = max(1, budget * 2.5 * sentiment_factor + noise)
+        data['Revenue_Millions'].append(round(revenue, 1))
+    
+    data['Sentiment_Score'] = [round(x, 2) for x in data['Sentiment_Score']]
+    data['Budget_Millions'] = [round(x, 1) for x in data['Budget_Millions']]
     
     df = pd.DataFrame(data)
     

@@ -10,9 +10,11 @@ sentiment, budget, genre, and other features.
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+import os
+import joblib
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -427,18 +429,23 @@ def predict_new_movie(model, X_train_columns, sentiment, budget, genre=None, sca
     return max(0.0, predicted_revenue)  # Ensure non-negative
 
 
-def build_models(X_train, X_test, y_train, y_test, scaling_params=None):
+def build_models(X_train, X_test, y_train, y_test, scaling_params=None, save_models=True):
     """
     Build and compare multiple models.
     
     Args:
         X_train, X_test, y_train, y_test: Split datasets
         scaling_params (dict): Dictionary with scaling parameters
+        save_models (bool): Whether to save trained models to disk
         
     Returns:
         dict: Dictionary containing trained models and their evaluations
     """
     results = {}
+    
+    # Create models directory if saving
+    if save_models:
+        os.makedirs('models', exist_ok=True)
     
     # Linear Regression
     print("\n" + "="*70)
@@ -462,7 +469,17 @@ def build_models(X_train, X_test, y_train, y_test, scaling_params=None):
     print("\n" + "="*70)
     print("MODEL COMPARISON")
     print("="*70)
-    print(f"Linear Regression R²: {lr_results['r2']:.3f}")
+    
+    comparison_df = pd.DataFrame({
+        'Model': ['Linear Regression', 'Random Forest'],
+        'MAE': [lr_results['mae'], rf_results['mae']],
+        'RMSE': [lr_results['rmse'], rf_results['rmse']],
+        'R2': [lr_results['r2'], rf_results['r2']]
+    })
+    print("\nModel Comparison Table:")
+    print(comparison_df.to_string(index=False))
+    
+    print(f"\nLinear Regression R²: {lr_results['r2']:.3f}")
     print(f"Random Forest R²: {rf_results['r2']:.3f}")
     
     if rf_results['r2'] > lr_results['r2']:
@@ -474,29 +491,93 @@ def build_models(X_train, X_test, y_train, y_test, scaling_params=None):
     
     results['best_model'] = best_model_name
     
+    # Save models and comparison
+    if save_models:
+        # Save best model
+        best_model = results[best_model_name]['model']
+        model_path = 'models/best_model.pkl'
+        joblib.dump(best_model, model_path)
+        print(f"\n[OK] Best model saved to {model_path}")
+        
+        # Save all models
+        joblib.dump(lr_model, 'models/linear_regression.pkl')
+        joblib.dump(rf_model, 'models/random_forest.pkl')
+        
+        # Save comparison report
+        os.makedirs('results', exist_ok=True)
+        comparison_df.to_csv('results/model_comparison.csv', index=False)
+        print(f"[OK] Model comparison saved to results/model_comparison.csv")
+        
+        # Create summary report
+        summary = f"""=== Movie Success Prediction Model Summary ===
+
+Dataset Statistics:
+- Training Samples: {len(X_train)}
+- Testing Samples: {len(X_test)}
+- Features: {len(X_train.columns)}
+- Feature Names: {list(X_train.columns)}
+
+Model Performance:
+- Linear Regression R²: {lr_results['r2']:.3f}
+- Random Forest R²: {rf_results['r2']:.3f}
+
+Best Model: {best_model_name.replace('_', ' ').title()}
+- MAE: ${results[best_model_name]['metrics']['mae']:.2f} Million
+- RMSE: ${results[best_model_name]['metrics']['rmse']:.2f} Million
+- R² Score: {results[best_model_name]['metrics']['r2']:.3f}
+
+Key Insights:
+1. {'Budget has significant impact on revenue prediction' if 'Budget_Millions' in X_train.columns else 'Budget feature not available'}
+2. {'Sentiment score contributes to revenue prediction' if 'Sentiment_Score' in X_train.columns else 'Sentiment feature not available'}
+3. Genre encoding helps capture category-specific patterns
+"""
+        with open('results/model_summary.txt', 'w') as f:
+            f.write(summary)
+        print(f"[OK] Model summary saved to results/model_summary.txt")
+    
     return results
 
 
 if __name__ == "__main__":
-    # Example usage with dummy data
+    # Example usage with robust synthetic data
     print("=" * 70)
     print("Phase 4: Predictive Modeling")
     print("=" * 70)
     
-    # Expanded dummy data for ML (need more samples)
+    # Generate realistic synthetic data for demonstration
+    # In production, use data from Phase 1 (real dataset or generated sample)
+    np.random.seed(42)
+    n_samples = 100
+    
+    genres = ['Sci-Fi', 'Drama', 'Comedy', 'Action', 'Horror', 'Romance', 'Thriller', 'Animation']
+    genre_multipliers = {'Sci-Fi': 3.5, 'Drama': 1.8, 'Comedy': 2.5, 'Action': 3.0, 
+                        'Horror': 4.0, 'Romance': 2.0, 'Thriller': 2.5, 'Animation': 3.5}
+    
     data = {
-        'Sentiment_Score': [0.9, -0.8, 0.1, 0.5, 0.85, -0.5, 0.2, 0.95, 
-                           -0.2, 0.4, 0.75, -0.3, 0.6, 0.3, -0.1],
-        'Budget_Millions': [160, 6, 20, 100, 150, 10, 30, 200, 15, 50, 
-                           120, 8, 90, 25, 12],
-        'Genre': ['Sci-Fi', 'Drama', 'Comedy', 'Action', 'Sci-Fi', 'Drama', 
-                 'Comedy', 'Action', 'Drama', 'Action', 'Sci-Fi', 'Drama',
-                 'Action', 'Comedy', 'Drama'],
-        'Revenue_Millions': [800, 0.5, 15, 200, 750, 2, 25, 900, 5, 120, 
-                           600, 3, 180, 18, 8]
+        'Sentiment_Score': [],
+        'Budget_Millions': [],
+        'Genre': [],
+        'Revenue_Millions': []
     }
     
+    for _ in range(n_samples):
+        genre = np.random.choice(genres)
+        budget = np.random.uniform(10, 250)
+        sentiment = np.random.uniform(-0.8, 0.95)
+        
+        # Revenue formula: Budget * Genre_Multiplier * Sentiment_Factor + Noise
+        sentiment_factor = 0.6 + (sentiment + 1) * 0.4  # Maps -1,1 to 0.2,1.4
+        noise = np.random.normal(0, budget * 0.25)
+        revenue = max(0.5, budget * genre_multipliers[genre] * sentiment_factor + noise)
+        
+        data['Sentiment_Score'].append(round(sentiment, 2))
+        data['Budget_Millions'].append(round(budget, 1))
+        data['Genre'].append(genre)
+        data['Revenue_Millions'].append(round(revenue, 1))
+    
     df = pd.DataFrame(data)
+    print(f"\nGenerated {n_samples} synthetic movie samples for demonstration")
+    print(f"Revenue range: ${df['Revenue_Millions'].min():.1f}M - ${df['Revenue_Millions'].max():.1f}M")
     
     # Prepare features
     X, y, df_encoded, scaling_params = prepare_features(df)
