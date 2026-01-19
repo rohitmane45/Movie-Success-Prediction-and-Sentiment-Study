@@ -13,6 +13,7 @@ Usage:
 
 import sys
 import os
+import pandas as pd
 
 # Add src directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -75,18 +76,65 @@ def run_pipeline(data_file=None, use_sample_data=False):
             return
     
     inspect_data(df)
-    
+
+    # Harmonize column names for external datasets (e.g., Kaggle IMDB)
+    # so that the rest of the pipeline (EDA + modeling) can run unchanged.
+    print("\nNormalizing dataset columns for EDA and modeling...")
+
+    # Create Revenue_Millions from common alternatives (e.g., 'gross')
+    if 'Revenue_Millions' not in df.columns:
+        if 'gross' in df.columns:
+            gross_values = pd.to_numeric(df['gross'], errors='coerce')
+            # Check if data is already normalized (0-1 range)
+            if gross_values.max() <= 1.0 and gross_values.min() >= 0.0:
+                print(" - Creating 'Revenue_Millions' from 'gross' (data appears normalized, using as-is).")
+                df['Revenue_Millions'] = gross_values
+            else:
+                print(" - Creating 'Revenue_Millions' from 'gross' (dividing by 1e6).")
+                df['Revenue_Millions'] = gross_values / 1_000_000.0
+        else:
+            print(" - WARNING: Could not find a revenue column like 'gross'.")
+
+    # Create Budget_Millions from 'budget' if not already present
+    if 'Budget_Millions' not in df.columns and 'budget' in df.columns:
+        budget_values = pd.to_numeric(df['budget'], errors='coerce')
+        # Check if data is already normalized (0-1 range)
+        if budget_values.max() <= 1.0 and budget_values.min() >= 0.0:
+            print(" - Creating 'Budget_Millions' from 'budget' (data appears normalized, using as-is).")
+            df['Budget_Millions'] = budget_values
+        else:
+            print(" - Creating 'Budget_Millions' from 'budget' (dividing by 1e6).")
+            df['Budget_Millions'] = budget_values / 1_000_000.0
+
+    # Create Genre from 'genres' (take the first genre in pipe-separated list)
+    if 'Genre' not in df.columns and 'genres' in df.columns:
+        print(" - Creating 'Genre' from 'genres' (first genre before '|').")
+        df['Genre'] = df['genres'].astype(str).str.split('|').str[0]
+
     # Phase 2: Sentiment Analysis with VADER
     print("\n" + "="*80)
     print("PHASE 2: SENTIMENT ANALYSIS WITH VADER")
     print("="*80)
     
-    # Ensure we have a review column
+    # Ensure we have a review / text column
     if 'User_Review' not in df.columns:
-        print("WARNING: 'User_Review' column not found. Using 'Plot' or first text column.")
-        text_columns = df.select_dtypes(include=['object']).columns
-        if len(text_columns) > 0:
+        print("WARNING: 'User_Review' column not found. Trying to choose a suitable text column...")
+        text_columns = list(df.select_dtypes(include=['object']).columns)
+
+        # Prefer columns that look like plot/keywords/description over generic ones like 'color'
+        preferred_order = ['plot_keywords', 'story', 'description', 'overview', 'synopsis', 'review', 'movie_title']
+        review_col = None
+        for cand in preferred_order:
+            if cand in df.columns:
+                review_col = cand
+                break
+
+        # Fallback: first text column if no preferred one found
+        if review_col is None and len(text_columns) > 0:
             review_col = text_columns[0]
+
+        if review_col is not None:
+            print(f"Using '{review_col}' as review text column (renamed to 'User_Review').")
             df.rename(columns={review_col: 'User_Review'}, inplace=True)
         else:
             print("ERROR: No text column found for sentiment analysis.")
@@ -96,7 +144,19 @@ def run_pipeline(data_file=None, use_sample_data=False):
     df = analyze_sentiment(df)
     
     print("\nSentiment analysis completed!")
-    print(df[['Movie_Title', 'Sentiment_Score']].head(10))
+    # Robustly pick a title column if present
+    title_col = None
+    if 'Movie_Title' in df.columns:
+        title_col = 'Movie_Title'
+    elif 'movie_title' in df.columns:
+        title_col = 'movie_title'
+    elif 'title' in df.columns:
+        title_col = 'title'
+
+    if title_col:
+        print(df[[title_col, 'Sentiment_Score']].head(10))
+    else:
+        print(df[['Sentiment_Score']].head(10))
     
     # Phase 3: Exploratory Data Analysis
     print("\n" + "="*80)
@@ -122,15 +182,29 @@ def run_pipeline(data_file=None, use_sample_data=False):
     if 'Revenue_Millions' not in df.columns:
         print("ERROR: 'Revenue_Millions' column required for modeling.")
         return
+
+    # Drop rows with missing target (Revenue_Millions) before modeling
+    initial_rows = len(df)
+    model_df = df.dropna(subset=['Revenue_Millions']).copy()
+    dropped = initial_rows - len(model_df)
+    if dropped > 0:
+        print(f"\nDropping {dropped} rows with missing Revenue_Millions for modeling ({len(model_df)} rows left).")
+    
+    # Check data quality - warn if target has very little variance
+    revenue_unique = model_df['Revenue_Millions'].nunique()
+    if revenue_unique < 10:
+        print(f"\nWARNING: Revenue_Millions has only {revenue_unique} unique values.")
+        print("This dataset may not be suitable for prediction as there's very little variance in the target variable.")
+        print("The model may not learn meaningful patterns. Consider using a dataset with more diverse revenue values.")
     
     # Prepare features
-    X, y, df_encoded = prepare_features(df)
+    X, y, df_encoded, scaling_params = prepare_features(model_df)
     
     # Split data
     X_train, X_test, y_train, y_test = split_data(X, y)
     
     # Build models
-    results = build_models(X_train, X_test, y_train, y_test)
+    results = build_models(X_train, X_test, y_train, y_test, scaling_params)
     
     # Make a prediction for a new movie
     print("\n" + "="*80)
@@ -141,9 +215,9 @@ def run_pipeline(data_file=None, use_sample_data=False):
     
     # Example predictions
     examples = [
-        {'sentiment': 0.9, 'budget': 180, 'genre': 'Sci-Fi', 'description': 'High-budget Sci-Fi with great reviews'},
-        {'sentiment': 0.3, 'budget': 30, 'genre': 'Drama', 'description': 'Low-budget Drama with mixed reviews'},
-        {'sentiment': 0.7, 'budget': 150, 'genre': 'Action', 'description': 'Big-budget Action with good reviews'}
+        {'title': 'Inception 2', 'sentiment': 0.9, 'budget': 180, 'genre': 'Sci-Fi', 'description': 'High-budget Sci-Fi with great reviews'},
+        {'title': 'Quiet Hearts', 'sentiment': 0.3, 'budget': 30, 'genre': 'Drama', 'description': 'Low-budget Drama with mixed reviews'},
+        {'title': 'Fury Road 2', 'sentiment': 0.7, 'budget': 150, 'genre': 'Action', 'description': 'Big-budget Action with good reviews'}
     ]
     
     for example in examples:
@@ -152,13 +226,14 @@ def run_pipeline(data_file=None, use_sample_data=False):
             X.columns, 
             sentiment=example['sentiment'],
             budget=example['budget'], 
-            genre=example['genre']
+            genre=example['genre'],
+            scaling_params=scaling_params
         )
-        print(f"\n{example['description']}:")
-        print(f"  Sentiment: {example['sentiment']:.2f}")
+        print(f"\n'{example['title']}' - {example['description']}:")
+        print(f"  Sentiment Score: {example['sentiment']:.2f}")
         print(f"  Budget: ${example['budget']}M")
         print(f"  Genre: {example['genre']}")
-        print(f"  Predicted Revenue: ${predicted:.2f}M")
+        print(f"  -> Predicted Revenue for '{example['title']}': ${predicted:.2f}M")
     
     # Save results
     print("\n" + "="*80)
@@ -168,7 +243,8 @@ def run_pipeline(data_file=None, use_sample_data=False):
     # Save processed data
     output_file = 'data/movies_with_sentiment.csv'
     df.to_csv(output_file, index=False)
-    print(f"✓ Processed data saved to {output_file}")
+    # Avoid non-ASCII symbols for Windows consoles
+    print(f"[OK] Processed data saved to {output_file}")
     
     print("\n" + "="*80)
     print("PIPELINE COMPLETED SUCCESSFULLY!")

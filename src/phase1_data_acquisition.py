@@ -39,9 +39,10 @@ def check_dependencies():
                 __import__('sklearn')
             else:
                 __import__(package)
-            print(f"✓ {package} is installed")
+            # Avoid non-ASCII symbols for Windows consoles
+            print(f"[OK] {package} is installed")
         except ImportError:
-            print(f"✗ {package} is missing")
+            print(f"[MISSING] {package} is missing")
             missing_packages.append(package)
     
     if missing_packages:
@@ -69,19 +70,19 @@ def load_data_from_csv(file_path, encoding='utf-8'):
     """
     try:
         df = pd.read_csv(file_path, encoding=encoding)
-        print(f"✓ Successfully loaded data from {file_path}")
+        print(f"[OK] Successfully loaded data from {file_path}")
         print(f"  Shape: {df.shape[0]} rows, {df.shape[1]} columns")
         return df
     except FileNotFoundError:
-        print(f"✗ Error: File not found at {file_path}")
+        print(f"[ERROR] File not found at {file_path}")
         print("  Please ensure the file exists or provide the correct path.")
         return None
     except UnicodeDecodeError:
         if encoding == 'utf-8':
-            print("✗ UTF-8 encoding failed, trying latin-1...")
+            print("[WARN] UTF-8 encoding failed, trying latin-1...")
             return load_data_from_csv(file_path, encoding='latin-1')
         else:
-            print(f"✗ Error: Could not decode file with {encoding} encoding")
+            print(f"[ERROR] Could not decode file with {encoding} encoding")
             return None
 
 
@@ -144,9 +145,9 @@ def prepare_data_directory(base_path='data'):
     """
     if not os.path.exists(base_path):
         os.makedirs(base_path)
-        print(f"✓ Created directory: {base_path}")
+        print(f"[OK] Created directory: {base_path}")
     else:
-        print(f"✓ Directory exists: {base_path}")
+        print(f"[OK] Directory exists: {base_path}")
 
 
 def create_sample_data():
