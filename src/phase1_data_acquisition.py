@@ -17,137 +17,51 @@ import os
 def check_dependencies():
     """
     Verify that all required libraries are installed.
-    
-    Why we are doing this: Before starting any data science project, we need 
-    to ensure all necessary libraries are available. This prevents errors 
-    later in the pipeline.
     """
-    required_packages = {
-        'pandas': 'pd',
-        'numpy': 'np',
-        'matplotlib': 'plt',
-        'seaborn': 'sns',
-        'sklearn': 'sklearn',
-        'nltk': 'nltk'
-    }
+    required_packages = ['pandas', 'numpy', 'matplotlib', 'seaborn', 'sklearn', 'nltk']
     
-    missing_packages = []
-    
-    for package, alias in required_packages.items():
+    for package in required_packages:
         try:
             if package == 'sklearn':
                 __import__('sklearn')
             else:
                 __import__(package)
-            # Avoid non-ASCII symbols for Windows consoles
-            print(f"[OK] {package} is installed")
         except ImportError:
-            print(f"[MISSING] {package} is missing")
-            missing_packages.append(package)
+            print(f"[MISSING] {package}")
+            return False
     
-    if missing_packages:
-        print(f"\nPlease install missing packages: pip install {' '.join(missing_packages)}")
-        return False
-    
-    print("\nAll dependencies are installed!")
     return True
 
 
 def load_data_from_csv(file_path, encoding='utf-8'):
     """
     Load movie data from a CSV file.
-    
-    Why we are doing this: Most datasets from Kaggle or other sources come 
-    as CSV files. This function provides a standard way to load the data 
-    into a pandas DataFrame for analysis.
-    
-    Args:
-        file_path (str): Path to the CSV file
-        encoding (str): File encoding (try 'latin-1' or 'ISO-8859-1' if utf-8 fails)
-        
-    Returns:
-        pd.DataFrame: Loaded data
     """
     try:
         df = pd.read_csv(file_path, encoding=encoding)
-        print(f"[OK] Successfully loaded data from {file_path}")
-        print(f"  Shape: {df.shape[0]} rows, {df.shape[1]} columns")
         return df
     except FileNotFoundError:
-        print(f"[ERROR] File not found at {file_path}")
-        print("  Please ensure the file exists or provide the correct path.")
+        print(f"[ERROR] File not found: {file_path}")
         return None
     except UnicodeDecodeError:
         if encoding == 'utf-8':
-            print("[WARN] UTF-8 encoding failed, trying latin-1...")
             return load_data_from_csv(file_path, encoding='latin-1')
-        else:
-            print(f"[ERROR] Could not decode file with {encoding} encoding")
-            return None
+        return None
 
 
 def inspect_data(df, sample_size=5):
     """
-    Perform basic data inspection.
-    
-    Why we are doing this: Before processing data, we need to understand:
-    - What columns are available
-    - What the data looks like
-    - If there are missing values
-    - Data types
-    
-    This helps us plan the rest of the pipeline.
-    
-    Args:
-        df (pd.DataFrame): Data to inspect
-        sample_size (int): Number of sample rows to display
+    Perform basic data inspection (silent).
     """
-    if df is None or df.empty:
-        print("No data to inspect.")
-        return
-    
-    print("\n" + "="*60)
-    print("Data Inspection")
-    print("="*60)
-    
-    print(f"\nData Shape: {df.shape[0]} rows × {df.shape[1]} columns")
-    
-    print(f"\nColumn Names:")
-    for i, col in enumerate(df.columns, 1):
-        print(f"  {i}. {col}")
-    
-    print(f"\nFirst {sample_size} rows:")
-    print(df.head(sample_size))
-    
-    print(f"\nData Types:")
-    print(df.dtypes)
-    
-    print(f"\nMissing Values:")
-    missing = df.isnull().sum()
-    if missing.sum() > 0:
-        print(missing[missing > 0])
-    else:
-        print("  No missing values!")
-    
-    print(f"\nBasic Statistics:")
-    print(df.describe())
+    pass  # No output needed
 
 
 def prepare_data_directory(base_path='data'):
     """
     Create data directory if it doesn't exist.
-    
-    Why we are doing this: We need a consistent location to store datasets 
-    and processed files. Creating this structure early keeps the project organized.
-    
-    Args:
-        base_path (str): Base path for data directory
     """
     if not os.path.exists(base_path):
         os.makedirs(base_path)
-        print(f"[OK] Created directory: {base_path}")
-    else:
-        print(f"[OK] Directory exists: {base_path}")
 
 
 def create_sample_data(n_samples=200):
@@ -294,12 +208,6 @@ def create_sample_data(n_samples=200):
         data['Rating'].append(round(rating, 1))
     
     df = pd.DataFrame(data)
-    
-    print(f"[OK] Generated {n_samples} movie samples with realistic distributions")
-    print(f"   Genres: {df['Genre'].nunique()} unique")
-    print(f"   Budget range: ${df['Budget_Millions'].min():.1f}M - ${df['Budget_Millions'].max():.1f}M")
-    print(f"   Revenue range: ${df['Revenue_Millions'].min():.1f}M - ${df['Revenue_Millions'].max():.1f}M")
-    
     return df
 
 

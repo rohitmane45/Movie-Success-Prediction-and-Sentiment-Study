@@ -314,7 +314,6 @@ def create_budget_vs_revenue_plot(df, budget_col='Budget_Millions',
     
     if save:
         plt.savefig(f'{FIGURES_DIR}/budget_vs_revenue.png', dpi=150, bbox_inches='tight')
-        print(f"[OK] Saved: {FIGURES_DIR}/budget_vs_revenue.png")
     
     plt.show()
 
@@ -349,6 +348,91 @@ def analyze_genre_sentiment(df, sentiment_col='Sentiment_Score',
     return genre_analysis
 
 
+def create_movies_by_genre(df, genre_col='Genre', save=True):
+    """
+    Create a bar chart showing number of movies by genre.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with genre data
+        genre_col (str): Column name for genre
+        save (bool): Whether to save the figure
+    """
+    ensure_figures_dir()
+    
+    plt.figure(figsize=(12, 6))
+    
+    # Count movies per genre
+    genre_counts = df[genre_col].value_counts().sort_values(ascending=False)
+    
+    # Create the bar chart
+    colors = plt.cm.viridis(np.linspace(0.2, 0.8, len(genre_counts)))
+    bars = plt.bar(genre_counts.index, genre_counts.values, 
+                   color=colors, edgecolor='black', alpha=0.8)
+    
+    # Add value labels on bars
+    for bar, val in zip(bars, genre_counts.values):
+        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5, 
+                f'{val}', ha='center', va='bottom', fontsize=10, fontweight='bold')
+    
+    plt.title('Number of Movies by Genre', fontsize=16, fontweight='bold')
+    plt.xlabel('Genre', fontsize=12)
+    plt.ylabel('Number of Movies', fontsize=12)
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(True, alpha=0.3, axis='y')
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(f'{FIGURES_DIR}/movies_by_genre.png', dpi=150, bbox_inches='tight')
+    
+    plt.show()
+    
+    return genre_counts
+
+
+def create_revenue_by_genre(df, revenue_col='Revenue_Millions', genre_col='Genre', save=True):
+    """
+    Create a bar chart showing total/average revenue by genre.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with revenue and genre data
+        revenue_col (str): Column name for revenue
+        genre_col (str): Column name for genre
+        save (bool): Whether to save the figure
+    """
+    ensure_figures_dir()
+    
+    plt.figure(figsize=(12, 6))
+    
+    # Calculate average revenue per genre
+    genre_revenue = df.groupby(genre_col)[revenue_col].mean().sort_values(ascending=False)
+    
+    # Create the bar chart
+    colors = plt.cm.plasma(np.linspace(0.2, 0.8, len(genre_revenue)))
+    bars = plt.bar(genre_revenue.index, genre_revenue.values, 
+                   color=colors, edgecolor='black', alpha=0.8)
+    
+    # Add value labels on bars
+    for bar, val in zip(bars, genre_revenue.values):
+        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1, 
+                f'${val:.1f}M', ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    plt.title('Average Revenue by Genre', fontsize=16, fontweight='bold')
+    plt.xlabel('Genre', fontsize=12)
+    plt.ylabel('Average Revenue (Millions $)', fontsize=12)
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(True, alpha=0.3, axis='y')
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(f'{FIGURES_DIR}/revenue_by_genre.png', dpi=150, bbox_inches='tight')
+    
+    plt.show()
+    
+    return genre_revenue
+
+
 def perform_eda(df, sentiment_col='Sentiment_Score', 
                revenue_col='Revenue_Millions', genre_col='Genre', save_figures=True):
     """
@@ -361,89 +445,17 @@ def perform_eda(df, sentiment_col='Sentiment_Score',
         genre_col (str): Column name for genre
         save_figures (bool): Whether to save all figures
     """
-    print("=" * 60)
-    print("Phase 3: Exploratory Data Analysis")
-    print("=" * 60)
+    ensure_figures_dir()
     
-    print(f"\nData shape: {df.shape}")
-    print(f"\nColumns: {list(df.columns)}")
-    print(f"\nData summary:")
-    print(df.describe())
+    # 1. Number of Movies by Genre
+    create_movies_by_genre(df, genre_col, save=save_figures)
     
-    # 1. Sentiment Distribution
-    print("\n" + "-"*50)
-    print("1. Creating sentiment distribution plot...")
-    create_sentiment_distribution(df, sentiment_col, save=save_figures)
+    # 2. Revenue by Genre
+    create_revenue_by_genre(df, revenue_col, genre_col, save=save_figures)
     
-    # 2. Scatter plot - Sentiment vs Revenue
-    print("\n" + "-"*50)
-    print("2. Creating sentiment vs revenue scatter plot...")
-    create_scatter_plot(df, sentiment_col, revenue_col, genre_col, save=save_figures)
-    
-    # 3. Genre sentiment analysis
-    print("\n" + "-"*50)
-    print("3. Analyzing genre-wise sentiment...")
-    genre_sentiment = create_genre_sentiment_bar(df, sentiment_col, genre_col, save=save_figures)
-    print("\nGenre Sentiment Summary:")
-    print(genre_sentiment)
-    
-    # 4. Genre revenue boxplot
-    print("\n" + "-"*50)
-    print("4. Creating genre revenue boxplot...")
-    create_genre_revenue_boxplot(df, revenue_col, genre_col, save=save_figures)
-    
-    # 5. Budget vs Revenue plot
+    # 3. Budget vs Revenue plot (colored by sentiment)
     if 'Budget_Millions' in df.columns:
-        print("\n" + "-"*50)
-        print("5. Creating budget vs revenue plot...")
         create_budget_vs_revenue_plot(df, 'Budget_Millions', revenue_col, sentiment_col, save=save_figures)
-    
-    # 6. Correlation analysis
-    print("\n" + "-"*50)
-    print("6. Performing correlation analysis...")
-    correlation = create_correlation_analysis(df, save=save_figures)
-    
-    # 7. Genre-wise detailed analysis
-    print("\n" + "-"*50)
-    print("7. Performing genre-wise sentiment analysis...")
-    genre_analysis = analyze_genre_sentiment(df, sentiment_col, revenue_col, genre_col)
-    
-    # Check specific correlation between sentiment and revenue
-    if sentiment_col in correlation.columns and revenue_col in correlation.columns:
-        sentiment_revenue_corr = correlation.loc[sentiment_col, revenue_col]
-        print(f"\n" + "="*60)
-        print("KEY FINDINGS")
-        print("="*60)
-        print(f"\nCorrelation between Sentiment and Revenue: {sentiment_revenue_corr:.3f}")
-        
-        if abs(sentiment_revenue_corr) > 0.5:
-            direction = "positive" if sentiment_revenue_corr > 0 else "negative"
-            print(f"[STRONG] This indicates a strong {direction} relationship!")
-            print("Higher sentiment scores are associated with higher revenue.")
-        elif abs(sentiment_revenue_corr) > 0.3:
-            direction = "positive" if sentiment_revenue_corr > 0 else "negative"
-            print(f"[MODERATE] This indicates a moderate {direction} relationship.")
-        else:
-            print("[WEAK] This indicates a weak or no significant relationship.")
-        
-        # Additional insights
-        if 'Budget_Millions' in correlation.columns:
-            budget_revenue_corr = correlation.loc['Budget_Millions', revenue_col]
-            print(f"\nCorrelation between Budget and Revenue: {budget_revenue_corr:.3f}")
-            if budget_revenue_corr > 0.5:
-                print("[INSIGHT] Budget is a strong predictor of revenue.")
-    
-    # Save genre analysis to CSV
-    if save_figures:
-        os.makedirs('results', exist_ok=True)
-        genre_analysis.to_csv('results/genre_analysis.csv', index=False)
-        print(f"\n[OK] Saved: results/genre_analysis.csv")
-    
-    print("\n" + "="*60)
-    print("Phase 3 completed successfully!")
-    print("="*60)
-    if save_figures:
-        print(f"\nAll figures saved to: {FIGURES_DIR}/")
 
 
 if __name__ == "__main__":

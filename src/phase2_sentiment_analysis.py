@@ -123,16 +123,10 @@ def analyze_sentiment(df, review_column='User_Review', add_detailed=False):
         pd.DataFrame: DataFrame with added 'Sentiment_Score' column
     """
     # Initialize the VADER sentiment analyzer
-    # WHY: We need to create an "instance" of the VADER analyzer. 
-    # Think of this as turning on the machine that will process the text.
     analyzer = SentimentIntensityAnalyzer()
     
     # Handle missing values
     df[review_column] = df[review_column].fillna('')
-    
-    # Apply sentiment analysis to each review with progress indication
-    total = len(df)
-    print(f"Analyzing sentiment for {total} reviews...")
     
     # Apply sentiment analysis
     df['Sentiment_Score'] = df[review_column].apply(
@@ -154,14 +148,6 @@ def analyze_sentiment(df, review_column='User_Review', add_detailed=False):
         bins=[-1.01, -0.5, -0.05, 0.05, 0.5, 1.01],
         labels=['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']
     )
-    
-    # Print summary statistics
-    print(f"\n--- Sentiment Analysis Summary ---")
-    print(f"Total reviews analyzed: {total}")
-    print(f"Average sentiment: {df['Sentiment_Score'].mean():.3f}")
-    print(f"Sentiment range: {df['Sentiment_Score'].min():.3f} to {df['Sentiment_Score'].max():.3f}")
-    print(f"\nSentiment Distribution:")
-    print(df['Sentiment_Category'].value_counts().sort_index())
     
     return df
 
