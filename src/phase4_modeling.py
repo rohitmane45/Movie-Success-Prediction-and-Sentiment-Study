@@ -1,11 +1,21 @@
 """
-Phase 4: Predictive Modeling
+Phase 4: Predictive Modeling (Enhanced with Advanced Models)
 
 This is the core "Data Science" part of the project. We are moving from 
 describing what happened (EDA) to predicting what will happen (Regression).
 
-Goal: Build regression model to predict box office success based on 
-sentiment, budget, genre, and other features.
+Goal: Build regression models to predict box office success based on 
+sentiment, budget, genre, director track record, star power, and more.
+
+Models Available:
+    1. Linear Regression     — simple baseline, fast, interpretable
+    2. Random Forest          — ensemble of decision trees, handles non-linearity
+    3. Gradient Boosting      — sequential tree boosting, strong on tabular data
+    4. XGBoost                — optimized gradient boosting with regularization
+
+Evaluation:
+    - 5-fold Cross-Validation for reliable performance estimates
+    - Feature importance visualization to explain predictions
 """
 
 import pandas as pd
@@ -18,6 +28,15 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+# XGBoost — try to import, fall back gracefully if not installed
+try:
+    import xgboost as xgb
+    HAS_XGBOOST = True
+except ImportError:
+    HAS_XGBOOST = False
+    print("[INFO] XGBoost not installed. Install with: pip install xgboost")
+    print("       Gradient Boosting (sklearn) will be used as fallback.")
 
 
 def prepare_features(df, target_col='Revenue_Millions', 
@@ -53,8 +72,22 @@ def prepare_features(df, target_col='Revenue_Millions',
         categorical_cols = ['Genre'] if 'Genre' in df.columns else []
     
     if numerical_cols is None:
-        numerical_cols = ['Sentiment_Score', 'Budget_Millions']
-        # Only include columns that exist
+        # Extended feature set: include all engineered features if they exist
+        numerical_cols = [
+            'Sentiment_Score', 'Budget_Millions',
+            # Temporal features
+            'release_month', 'is_summer_release', 'is_holiday_release',
+            # Personnel features
+            'director_avg_revenue', 'director_movie_count',
+            'lead_actor_avg_revenue',
+            # Quality & popularity signals
+            'vote_average', 'vote_count', 'popularity',
+            # Content features
+            'runtime', 'num_genres',
+            # Financial derivations
+            'log_budget', 'budget_per_vote',
+        ]
+        # Only include columns that actually exist in the DataFrame
         numerical_cols = [col for col in numerical_cols if col in df.columns]
     
     # Create a copy to avoid modifying original
@@ -94,18 +127,34 @@ def prepare_features(df, target_col='Revenue_Millions',
                 scaling_params['revenue_max'] = revenue_vals.max()
                 scaling_params['revenue_normalized'] = False
     
-    # One-Hot Encode categorical variables
-    if categorical_cols:
+    # One-Hot Encode categorical variables (only if Genre_* columns don't already exist)
+    existing_genre_cols = [c for c in df_encoded.columns if c.startswith('Genre_')]
+    if categorical_cols and not existing_genre_cols:
         df_encoded = pd.get_dummies(df_encoded, columns=categorical_cols, 
                                    drop_first=True, prefix='Genre')
     
+    # Also include Studio_* columns if present (from feature engineering)
+    studio_cols = [col for col in df_encoded.columns if col.startswith('Studio_')]
+    
     # Select features (all columns except target)
     feature_cols = numerical_cols + [col for col in df_encoded.columns 
-                                    if col.startswith('Genre_')]
-    feature_cols = [col for col in feature_cols if col != target_col]
+                                    if col.startswith('Genre_')] + studio_cols
+    # Deduplicate while preserving order
+    seen = set()
+    unique_feature_cols = []
+    for col in feature_cols:
+        if col not in seen and col != target_col:
+            seen.add(col)
+            unique_feature_cols.append(col)
+    feature_cols = unique_feature_cols
     
     X = df_encoded[feature_cols]
     y = df_encoded[target_col] if target_col in df_encoded.columns else df[target_col]
+    
+    # Drop any rows with NaN in features or target
+    valid_mask = X.notna().all(axis=1) & y.notna()
+    X = X[valid_mask]
+    y = y[valid_mask]
     
     return X, y, df_encoded, scaling_params
 
@@ -181,6 +230,197 @@ def train_random_forest(X_train, y_train, n_estimators=100, random_state=42):
     )
     model.fit(X_train, y_train)
     return model
+
+
+def train_gradient_boosting(X_train, y_train, n_estimators=200, learning_rate=0.1, random_state=42):
+    """
+    Train a Gradient Boosting Regressor model.
+    
+    Why we are doing this: Gradient Boosting builds trees SEQUENTIALLY —
+    each new tree focuses on correcting the errors of the previous ones.
+    Think of it as a team where each member specializes in fixing the
+    mistakes the others made.
+    
+    How it differs from Random Forest:
+        - Random Forest: builds trees INDEPENDENTLY, then averages (parallel)
+        - Gradient Boosting: builds trees SEQUENTIALLY, each improving on the last (serial)
+    
+    The 'learning_rate' controls how aggressively each tree corrects errors.
+    Lower = more trees needed but often better generalization (less overfitting).
+    
+    Parameters explained:
+        - n_estimators=200: Number of sequential trees to build
+        - learning_rate=0.1: Step size for each tree's correction
+        - max_depth=5: Each tree is shallow (prevents overfitting)
+        - subsample=0.8: Uses 80% of data per tree (adds randomness)
+    
+    Args:
+        X_train (pd.DataFrame): Training features
+        y_train (pd.Series): Training target
+        n_estimators (int): Number of boosting stages
+        learning_rate (float): Shrinkage rate
+        random_state (int): Random seed
+        
+    Returns:
+        model: Trained Gradient Boosting model
+    """
+    if len(X_train) < 100:
+        n_estimators = 50
+        max_depth = 3
+    else:
+        max_depth = 5
+    
+    model = GradientBoostingRegressor(
+        n_estimators=n_estimators,
+        learning_rate=learning_rate,
+        max_depth=max_depth,
+        subsample=0.8,
+        min_samples_split=5,
+        min_samples_leaf=3,
+        random_state=random_state
+    )
+    model.fit(X_train, y_train)
+    return model
+
+
+def train_xgboost(X_train, y_train, n_estimators=300, learning_rate=0.1, random_state=42):
+    """
+    Train an XGBoost Regressor model.
+    
+    Why we are doing this: XGBoost (eXtreme Gradient Boosting) is the go-to
+    algorithm for tabular data in competitions. It consistently outperforms
+    other algorithms because:
+    
+    1. Built-in regularization (L1 + L2) — prevents overfitting
+    2. Efficient handling of missing values
+    3. Parallelized tree building — much faster than sklearn's GBM
+    4. Column subsampling — randomly selects feature subsets per tree
+    
+    Parameters explained:
+        - n_estimators=300: More trees than GBM because XGBoost regularizes better
+        - colsample_bytree=0.8: Each tree sees 80% of features
+        - reg_alpha=0.1: L1 regularization (sparsity)
+        - reg_lambda=1.0: L2 regularization (shrinkage)
+    
+    Args:
+        X_train (pd.DataFrame): Training features
+        y_train (pd.Series): Training target
+        n_estimators (int): Number of boosting rounds
+        learning_rate (float): Step size shrinkage
+        random_state (int): Random seed
+        
+    Returns:
+        model: Trained XGBoost model, or None if XGBoost not installed
+    """
+    if not HAS_XGBOOST:
+        print("      [SKIP] XGBoost not installed. Using Gradient Boosting instead.")
+        return None
+    
+    if len(X_train) < 100:
+        n_estimators = 50
+        max_depth = 3
+    else:
+        max_depth = 6
+    
+    model = xgb.XGBRegressor(
+        n_estimators=n_estimators,
+        learning_rate=learning_rate,
+        max_depth=max_depth,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        reg_alpha=0.1,
+        reg_lambda=1.0,
+        min_child_weight=3,
+        random_state=random_state,
+        verbosity=0
+    )
+    model.fit(X_train, y_train)
+    return model
+
+
+def cross_validate_model(model, X, y, cv=5, model_name="Model"):
+    """
+    Perform k-fold cross-validation for reliable performance estimates.
+    
+    Why: A single train/test split can be misleading. Cross-validation
+    tests the model on EVERY sample by rotating the test set:
+    
+    Fold 1: [TEST] [train] [train] [train] [train]  → R² = 0.72
+    Fold 2: [train] [TEST] [train] [train] [train]  → R² = 0.68
+    ...
+    Average CV R² = 0.716 ± 0.025
+    
+    Low standard deviation = stable model. High std = unreliable.
+    
+    Method: cross_val_score(cv=5) splits data into 5 equal folds,
+    trains on 4, tests on 1, rotates 5 times.
+    
+    Args:
+        model: An unfitted model instance
+        X (pd.DataFrame): All features
+        y (pd.Series): All targets
+        cv (int): Number of folds
+        model_name (str): For display
+        
+    Returns:
+        dict: {'mean_r2': float, 'std_r2': float, 'scores': array}
+    """
+    scores = cross_val_score(model, X, y, cv=cv, scoring='r2', n_jobs=-1)
+    return {
+        'mean_r2': scores.mean(),
+        'std_r2': scores.std(),
+        'scores': scores
+    }
+
+
+def plot_feature_importance(model, feature_names, model_name="Model", top_n=15, save=True):
+    """
+    Visualize which features drive predictions the most.
+    
+    Why: Feature importance answers the BUSINESS question: "What factors
+    matter most for a movie's success?" This is often MORE valuable than
+    the prediction itself.
+    
+    Method: model.feature_importances_ — tree-based models track how much
+    each feature reduces prediction error across all trees.
+    
+    Args:
+        model: Trained tree-based model with feature_importances_
+        feature_names: List of feature column names
+        model_name (str): Name for chart title
+        top_n (int): Number of top features to show
+        save (bool): Whether to save to disk
+    """
+    if not hasattr(model, 'feature_importances_'):
+        print(f"      [SKIP] {model_name} doesn't support feature importance.")
+        return
+    
+    importances = model.feature_importances_
+    indices = np.argsort(importances)[::-1][:top_n]
+    
+    plt.figure(figsize=(12, 8))
+    plt.barh(
+        range(len(indices)),
+        importances[indices][::-1],
+        align='center',
+        color=plt.cm.viridis(np.linspace(0.3, 0.9, len(indices)))
+    )
+    plt.yticks(
+        range(len(indices)),
+        [feature_names[i] for i in indices[::-1]],
+        fontsize=10
+    )
+    plt.xlabel('Feature Importance', fontsize=12)
+    plt.title(f'{model_name} — Top {top_n} Feature Importances',
+              fontsize=14, fontweight='bold')
+    plt.tight_layout()
+    
+    if save:
+        os.makedirs('results/figures', exist_ok=True)
+        plt.savefig('results/figures/feature_importance.png', dpi=150, bbox_inches='tight')
+        print(f"      Saved: results/figures/feature_importance.png")
+    
+    plt.close()
 
 
 def evaluate_model(model, X_test, y_test, model_name="Model", scaling_params=None):
@@ -309,76 +549,181 @@ def predict_new_movie(model, X_train_columns, sentiment, budget, genre=None, sca
     return max(0.0, predicted_revenue)
 
 
-def build_models(X_train, X_test, y_train, y_test, scaling_params=None, save_models=True):
+def build_models(X_train, X_test, y_train, y_test, scaling_params=None, save_models=True,
+                 X_full=None, y_full=None):
     """
-    Build and compare multiple models.
+    Build, compare, and cross-validate multiple models.
+    
+    Enhanced to include 4 algorithms and cross-validation for reliable
+    performance estimates. Also generates feature importance charts.
     
     Args:
         X_train, X_test, y_train, y_test: Split datasets
         scaling_params (dict): Dictionary with scaling parameters
         save_models (bool): Whether to save trained models to disk
+        X_full (pd.DataFrame): Full feature set for cross-validation (optional)
+        y_full (pd.Series): Full target for cross-validation (optional)
         
     Returns:
         dict: Dictionary containing trained models and their evaluations
     """
     results = {}
+    model_names = []
+    model_metrics = []
     
     # Create models directory if saving
     if save_models:
         os.makedirs('models', exist_ok=True)
     
-    # Linear Regression
+    # ── 1. Linear Regression ──
+    print("      Training Linear Regression...")
     lr_model = train_linear_regression(X_train, y_train)
     lr_results = evaluate_model(lr_model, X_test, y_test, "Linear Regression", scaling_params)
     results['linear_regression'] = {'model': lr_model, 'metrics': lr_results}
+    model_names.append('Linear Regression')
     
-    # Random Forest
+    # ── 2. Random Forest ──
+    print("      Training Random Forest...")
     rf_model = train_random_forest(X_train, y_train)
     rf_results = evaluate_model(rf_model, X_test, y_test, "Random Forest", scaling_params)
     results['random_forest'] = {'model': rf_model, 'metrics': rf_results}
+    model_names.append('Random Forest')
     
-    # Determine best model
-    if rf_results['r2'] > lr_results['r2']:
-        best_model_name = 'random_forest'
-    else:
-        best_model_name = 'linear_regression'
+    # ── 3. Gradient Boosting ──
+    print("      Training Gradient Boosting...")
+    gb_model = train_gradient_boosting(X_train, y_train)
+    gb_results = evaluate_model(gb_model, X_test, y_test, "Gradient Boosting", scaling_params)
+    results['gradient_boosting'] = {'model': gb_model, 'metrics': gb_results}
+    model_names.append('Gradient Boosting')
+    
+    # ── 4. XGBoost (if available) ──
+    xgb_model = train_xgboost(X_train, y_train)
+    if xgb_model is not None:
+        print("      Training XGBoost...")
+        xgb_results = evaluate_model(xgb_model, X_test, y_test, "XGBoost", scaling_params)
+        results['xgboost'] = {'model': xgb_model, 'metrics': xgb_results}
+        model_names.append('XGBoost')
+    
+    # ── Cross-Validation (if full dataset provided) ──
+    if X_full is not None and y_full is not None:
+        print("      Running 5-fold Cross-Validation...")
+        for key, name in [('linear_regression', 'Linear Regression'),
+                          ('random_forest', 'Random Forest'),
+                          ('gradient_boosting', 'Gradient Boosting')]:
+            if key == 'linear_regression':
+                cv_model = LinearRegression()
+            elif key == 'random_forest':
+                cv_model = RandomForestRegressor(n_estimators=100, max_depth=10,
+                                                 random_state=42)
+            else:
+                cv_model = GradientBoostingRegressor(n_estimators=200,
+                                                      learning_rate=0.1,
+                                                      max_depth=5, random_state=42)
+            cv_results = cross_validate_model(cv_model, X_full, y_full, cv=5, model_name=name)
+            results[key]['cv'] = cv_results
+            print(f"        {name}: CV R² = {cv_results['mean_r2']:.3f} ± {cv_results['std_r2']:.3f}")
+        
+        if HAS_XGBOOST and 'xgboost' in results:
+            cv_model = xgb.XGBRegressor(n_estimators=300, learning_rate=0.1,
+                                         max_depth=6, random_state=42, verbosity=0)
+            cv_results = cross_validate_model(cv_model, X_full, y_full, cv=5, model_name='XGBoost')
+            results['xgboost']['cv'] = cv_results
+            print(f"        XGBoost: CV R² = {cv_results['mean_r2']:.3f} ± {cv_results['std_r2']:.3f}")
+    
+    # ── Determine best model (by test R², or CV R² if available) ──
+    best_r2 = -999
+    best_model_name = 'linear_regression'
+    for key in results:
+        if key == 'best_model':
+            continue
+        if not isinstance(results[key], dict) or 'metrics' not in results[key]:
+            continue
+        # Prefer CV score if available, otherwise use test score
+        if 'cv' in results[key]:
+            r2 = results[key]['cv']['mean_r2']
+        else:
+            r2 = results[key]['metrics']['r2']
+        if r2 > best_r2:
+            best_r2 = r2
+            best_model_name = key
     
     results['best_model'] = best_model_name
     
-    # Save models silently
+    # ── Feature Importance (from best tree-based model) ──
+    best_model_obj = results[best_model_name]['model']
+    if hasattr(best_model_obj, 'feature_importances_'):
+        plot_feature_importance(
+            best_model_obj,
+            list(X_train.columns),
+            model_name=best_model_name.replace('_', ' ').title(),
+            save=save_models
+        )
+    
+    # ── Save models and results ──
     if save_models:
         best_model = results[best_model_name]['model']
         joblib.dump(best_model, 'models/best_model.pkl')
         joblib.dump(lr_model, 'models/linear_regression.pkl')
         joblib.dump(rf_model, 'models/random_forest.pkl')
+        joblib.dump(gb_model, 'models/gradient_boosting.pkl')
+        if xgb_model is not None:
+            joblib.dump(xgb_model, 'models/xgboost.pkl')
         
         os.makedirs('results', exist_ok=True)
-        comparison_df = pd.DataFrame({
-            'Model': ['Linear Regression', 'Random Forest'],
-            'MAE': [lr_results['mae'], rf_results['mae']],
-            'RMSE': [lr_results['rmse'], rf_results['rmse']],
-            'R2': [lr_results['r2'], rf_results['r2']]
-        })
+        
+        # Build comparison table
+        comparison_rows = []
+        for key in ['linear_regression', 'random_forest', 'gradient_boosting', 'xgboost']:
+            if key not in results or not isinstance(results[key], dict):
+                continue
+            row = {
+                'Model': key.replace('_', ' ').title(),
+                'MAE': results[key]['metrics']['mae'],
+                'RMSE': results[key]['metrics']['rmse'],
+                'R2_Test': results[key]['metrics']['r2'],
+            }
+            if 'cv' in results[key]:
+                row['R2_CV_Mean'] = results[key]['cv']['mean_r2']
+                row['R2_CV_Std'] = results[key]['cv']['std_r2']
+            comparison_rows.append(row)
+        
+        comparison_df = pd.DataFrame(comparison_rows)
         comparison_df.to_csv('results/model_comparison.csv', index=False)
         
         # Create summary report
-        summary = f"""=== Movie Success Prediction Model Summary ===
-
-Dataset Statistics:
-- Training Samples: {len(X_train)}
-- Testing Samples: {len(X_test)}
-- Features: {len(X_train.columns)}
-
-Model Performance:
-- Linear Regression R²: {lr_results['r2']:.3f}
-- Random Forest R²: {rf_results['r2']:.3f}
-
-Best Model: {best_model_name.replace('_', ' ').title()}
-- MAE: ${results[best_model_name]['metrics']['mae']:.2f} Million
-- R² Score: {results[best_model_name]['metrics']['r2']:.3f}
-"""
+        summary_lines = [
+            "=== Movie Success Prediction Model Summary ===",
+            "",
+            "Dataset Statistics:",
+            f"- Training Samples: {len(X_train)}",
+            f"- Testing Samples: {len(X_test)}",
+            f"- Features: {len(X_train.columns)}",
+            f"- Feature Names: {list(X_train.columns)}",
+            "",
+            "Model Performance (Test Set):",
+        ]
+        for key in ['linear_regression', 'random_forest', 'gradient_boosting', 'xgboost']:
+            if key in results and isinstance(results[key], dict) and 'metrics' in results[key]:
+                name = key.replace('_', ' ').title()
+                m = results[key]['metrics']
+                line = f"- {name}: R²={m['r2']:.3f} | MAE=${m['mae']:.2f}M | RMSE=${m['rmse']:.2f}M"
+                if 'cv' in results[key]:
+                    cv = results[key]['cv']
+                    line += f" | CV R²={cv['mean_r2']:.3f}±{cv['std_r2']:.3f}"
+                summary_lines.append(line)
+        
+        summary_lines.extend([
+            "",
+            f"Best Model: {best_model_name.replace('_', ' ').title()}",
+            f"- MAE: ${results[best_model_name]['metrics']['mae']:.2f} Million",
+            f"- R² Score: {results[best_model_name]['metrics']['r2']:.3f}",
+        ])
+        if 'cv' in results[best_model_name]:
+            cv = results[best_model_name]['cv']
+            summary_lines.append(f"- CV R²: {cv['mean_r2']:.3f} ± {cv['std_r2']:.3f}")
+        
         with open('results/model_summary.txt', 'w') as f:
-            f.write(summary)
+            f.write('\n'.join(summary_lines))
     
     return results
 
