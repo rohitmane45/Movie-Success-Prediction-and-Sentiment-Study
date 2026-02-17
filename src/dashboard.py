@@ -35,98 +35,148 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ── Premium Dark Theme CSS ──────────────────────────────────────────
+# ── Fresh Cinema-Sunset Theme CSS ───────────────────────────────────
 st.markdown("""
 <style>
-    /* === GLOBAL DARK THEME === */
+    /* === GOOGLE FONTS === */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    /* === GLOBAL FRESH DARK THEME === */
     .stApp {
-        background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 40%, #16213e 100%);
+        background: linear-gradient(160deg, #0a0f1a 0%, #0f172a 35%, #1a1f35 70%, #0d1525 100%);
+        font-family: 'Inter', sans-serif;
     }
 
-    /* Sidebar */
+    /* Sidebar — frosted glass with accent line */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1a1a2e 0%, #0f0c29 100%);
-        border-right: 1px solid rgba(255,255,255,0.05);
+        background: linear-gradient(180deg, #0f172a 0%, #0a0f1a 100%);
+        border-right: 1px solid rgba(6, 182, 212, 0.12);
+    }
+    section[data-testid="stSidebar"]::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 2px;
+        height: 100%;
+        background: linear-gradient(180deg, #06b6d4, #f472b6, #fb923c, transparent);
+        opacity: 0.5;
     }
 
-    /* Glassmorphism cards */
+    /* === SHIMMER ANIMATION === */
+    @keyframes shimmer {
+        0% { background-position: -200% center; }
+        100% { background-position: 200% center; }
+    }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulseGlow {
+        0%, 100% { box-shadow: 0 0 8px rgba(6, 182, 212, 0.15); }
+        50% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.25); }
+    }
+
+    /* Glassmorphism cards — fresh glow */
     .glass-card {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.035);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(6, 182, 212, 0.1);
         border-radius: 16px;
         padding: 24px;
         margin: 10px 0;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: fadeInUp 0.5s ease-out;
     }
     .glass-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 32px rgba(99, 102, 241, 0.15);
+        transform: translateY(-3px);
+        border-color: rgba(6, 182, 212, 0.25);
+        box-shadow: 0 8px 32px rgba(6, 182, 212, 0.12), 0 0 0 1px rgba(6, 182, 212, 0.08);
     }
 
-    /* Metric cards */
+    /* Metric cards — vivid gradient borders */
     .metric-card {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
-        border: 1px solid rgba(99, 102, 241, 0.3);
-        border-radius: 12px;
-        padding: 20px;
+        background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(244, 114, 182, 0.06) 100%);
+        border: 1px solid rgba(6, 182, 212, 0.2);
+        border-radius: 14px;
+        padding: 22px;
         text-align: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: fadeInUp 0.6s ease-out;
+    }
+    .metric-card:hover {
+        border-color: rgba(6, 182, 212, 0.4);
+        animation: pulseGlow 2s ease-in-out infinite;
+        transform: translateY(-2px);
     }
     .metric-value {
-        font-size: 2.2rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #6366f1, #a855f7);
+        font-size: 2.3rem;
+        font-weight: 800;
+        font-family: 'JetBrains Mono', monospace;
+        background: linear-gradient(135deg, #22d3ee, #f472b6);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin: 8px 0 4px 0;
     }
     .metric-label {
-        font-size: 0.85rem;
-        color: rgba(255,255,255,0.6);
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.5);
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
+        font-weight: 500;
     }
 
-    /* Hero header */
+    /* Hero header — animated shimmer gradient */
     .hero-title {
-        font-size: 2.5rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+        font-size: 2.6rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, #06b6d4, #22d3ee, #f472b6, #fb923c, #06b6d4);
+        background-size: 200% auto;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
         margin-bottom: 0;
+        animation: shimmer 4s linear infinite;
+        letter-spacing: -0.5px;
     }
     .hero-subtitle {
         text-align: center;
-        color: rgba(255,255,255,0.5);
+        color: rgba(255,255,255,0.45);
         font-size: 1.05rem;
-        margin-top: 4px;
+        margin-top: 6px;
+        font-weight: 300;
     }
 
-    /* Prediction result */
+    /* Prediction result — emerald glow */
     .prediction-box {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%);
-        border: 2px solid rgba(16, 185, 129, 0.4);
-        border-radius: 16px;
-        padding: 30px;
+        background: linear-gradient(135deg, rgba(52, 211, 153, 0.12) 0%, rgba(6, 182, 212, 0.06) 100%);
+        border: 2px solid rgba(52, 211, 153, 0.35);
+        border-radius: 18px;
+        padding: 32px;
         text-align: center;
         margin: 20px 0;
+        transition: all 0.3s ease;
+    }
+    .prediction-box:hover {
+        box-shadow: 0 0 30px rgba(52, 211, 153, 0.12);
     }
     .prediction-value {
-        font-size: 3rem;
-        font-weight: 800;
-        color: #10b981;
+        font-size: 3.2rem;
+        font-weight: 900;
+        font-family: 'JetBrains Mono', monospace;
+        color: #34d399;
     }
 
-    /* Section headers */
+    /* Section headers — accent left border */
     .section-header {
-        font-size: 1.3rem;
+        font-size: 1.25rem;
         font-weight: 600;
-        color: #a5b4fc;
-        border-bottom: 2px solid rgba(99, 102, 241, 0.3);
-        padding-bottom: 8px;
-        margin: 20px 0 15px 0;
+        color: #67e8f9;
+        border-bottom: none;
+        border-left: 3px solid #06b6d4;
+        padding: 6px 0 6px 14px;
+        margin: 24px 0 16px 0;
+        letter-spacing: 0.3px;
     }
 
     /* Data tables */
@@ -135,24 +185,44 @@ st.markdown("""
         overflow: hidden;
     }
 
-    /* Hide default Streamlit elements */
+    /* Hide default Streamlit elements but keep sidebar toggle visible */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+    }
 
-    /* Tabs styling */
+    /* Tabs styling — fresh accents */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
     }
     .stTabs [data-baseweb="tab"] {
-        background-color: rgba(255,255,255,0.05);
-        border-radius: 8px;
-        border: 1px solid rgba(255,255,255,0.1);
-        padding: 8px 20px;
+        background-color: rgba(255,255,255,0.04);
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.08);
+        padding: 8px 22px;
+        transition: all 0.2s ease;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: rgba(6, 182, 212, 0.08);
+        border-color: rgba(6, 182, 212, 0.2);
     }
     .stTabs [aria-selected="true"] {
-        background-color: rgba(99, 102, 241, 0.2);
-        border-color: rgba(99, 102, 241, 0.5);
+        background-color: rgba(6, 182, 212, 0.15);
+        border-color: rgba(6, 182, 212, 0.4);
+    }
+
+    /* Streamlit button accents */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #06b6d4, #0891b2) !important;
+        border: none !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
+    }
+    .stButton > button[kind="primary"]:hover {
+        box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3) !important;
+        transform: translateY(-1px) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -244,21 +314,21 @@ PLOTLY_TEMPLATE = {
         'plot_bgcolor': 'rgba(0,0,0,0)',
         'font': {'color': 'rgba(255,255,255,0.8)', 'family': 'Inter, sans-serif'},
         'xaxis': {
-            'gridcolor': 'rgba(255,255,255,0.06)',
-            'zerolinecolor': 'rgba(255,255,255,0.1)'
+            'gridcolor': 'rgba(255,255,255,0.05)',
+            'zerolinecolor': 'rgba(255,255,255,0.08)'
         },
         'yaxis': {
-            'gridcolor': 'rgba(255,255,255,0.06)',
-            'zerolinecolor': 'rgba(255,255,255,0.1)'
+            'gridcolor': 'rgba(255,255,255,0.05)',
+            'zerolinecolor': 'rgba(255,255,255,0.08)'
         },
-        'colorway': ['#6366f1', '#a855f7', '#ec4899', '#10b981',
-                      '#f59e0b', '#3b82f6', '#ef4444', '#14b8a6'],
+        'colorway': ['#06b6d4', '#f472b6', '#fb923c', '#34d399',
+                      '#a78bfa', '#38bdf8', '#f87171', '#fbbf24'],
     }
 }
 
-COLOR_PALETTE = ['#6366f1', '#a855f7', '#ec4899', '#10b981',
-                  '#f59e0b', '#3b82f6', '#ef4444', '#14b8a6',
-                  '#8b5cf6', '#06b6d4', '#f97316', '#84cc16']
+COLOR_PALETTE = ['#06b6d4', '#f472b6', '#fb923c', '#34d399',
+                  '#a78bfa', '#38bdf8', '#fbbf24', '#f87171',
+                  '#22d3ee', '#e879f9', '#facc15', '#4ade80']
 
 
 def apply_plotly_theme(fig):
@@ -282,10 +352,10 @@ with st.sidebar:
     st.markdown("""
     <div style="text-align: center; padding: 20px 0;">
         <span style="font-size: 3rem;">🎬</span>
-        <h2 style="background: linear-gradient(135deg, #6366f1, #a855f7);
+        <h2 style="background: linear-gradient(135deg, #06b6d4, #22d3ee, #f472b6);
                     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-                    margin: 10px 0 5px 0;">Movie Predictor</h2>
-        <p style="color: rgba(255,255,255,0.4); font-size: 0.85rem;">
+                    margin: 10px 0 5px 0; font-weight: 800;">Movie Predictor</h2>
+        <p style="color: rgba(255,255,255,0.35); font-size: 0.82rem; font-weight: 300; letter-spacing: 0.5px;">
             ML-Powered Revenue Prediction
         </p>
     </div>
@@ -293,20 +363,31 @@ with st.sidebar:
 
     st.markdown("---")
 
+    PAGES = [
+        "🏠 Overview",
+        " Revenue Predictor",
+        "🔴 Live Predictor",
+        "📊 Sentiment Trends",
+        "🔍 Movie Comparison",
+        "🤖 Model Performance",
+        "💼 Business Intelligence",
+    ]
     page = st.radio(
         "Navigation",
-        ["🏠 Overview", "🎯 Revenue Predictor", "🔴 Live Predictor",
-         "📊 Sentiment Trends", "🔍 Movie Comparison",
-         "🤖 Model Performance", "💼 Business Intelligence"],
-        label_visibility="collapsed"
+        PAGES,
+        label_visibility="collapsed",
+        key="nav_radio",
     )
+
+    # Show current page indicator
+    st.caption(f"📍 {page}")
 
     st.markdown("---")
     st.markdown("""
-    <div style="color: rgba(255,255,255,0.3); font-size: 0.75rem; text-align: center;">
+    <div style="color: rgba(255,255,255,0.25); font-size: 0.72rem; text-align: center; letter-spacing: 0.3px; line-height: 1.6;">
         Powered by Scikit-learn & VADER<br>
         Live Data via TMDB API<br>
-        Built with Streamlit
+        <span style="color: rgba(6,182,212,0.5);">Built with Streamlit</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -385,7 +466,7 @@ if page == "🏠 Overview":
             fig = px.histogram(
                 df, x='Revenue_Millions',
                 nbins=40,
-                color_discrete_sequence=['#6366f1'],
+                color_discrete_sequence=['#06b6d4'],
                 labels={'Revenue_Millions': 'Revenue ($M)', 'count': 'Movies'}
             )
             fig.update_layout(showlegend=False)
@@ -402,7 +483,7 @@ if page == "🏠 Overview":
                 y=genre_counts.index,
                 orientation='h',
                 color=genre_counts.values,
-                color_continuous_scale='Viridis',
+                color_continuous_scale='Tealgrn',
                 labels={'x': 'Number of Movies', 'y': 'Genre'}
             )
             fig.update_layout(showlegend=False, coloraxis_showscale=False,
@@ -414,10 +495,10 @@ if page == "🏠 Overview":
     st.markdown(f"""
     <div class="glass-card" style="text-align: center;">
         <span style="color: rgba(255,255,255,0.5);">Data Source:</span>
-        <strong style="color: #a5b4fc;"> {data_source}</strong>
+        <strong style="color: #67e8f9;"> {data_source}</strong>
         &nbsp;•&nbsp;
         <span style="color: rgba(255,255,255,0.5);">Pipeline:</span>
-        <strong style="color: #a5b4fc;"> VADER + {'DistilBERT' if 'Transformer_Sentiment' in df.columns else 'VADER only'}</strong>
+        <strong style="color: #67e8f9;"> VADER + {'DistilBERT' if 'Transformer_Sentiment' in df.columns else 'VADER only'}</strong>
     </div>
     """, unsafe_allow_html=True)
 
@@ -525,7 +606,7 @@ elif page == "🎯 Revenue Predictor":
                         </div>
                         <div class="prediction-value">${predicted:,.1f}M</div>
                         <div style="color: rgba(255,255,255,0.5); margin-top: 8px;">
-                            ROI: <strong style="color: {'#10b981' if roi > 0 else '#ef4444'};">
+                            ROI: <strong style="color: {'#34d399' if roi > 0 else '#ef4444'};">
                             {roi:+.0f}%</strong>
                         </div>
                     </div>
@@ -543,7 +624,7 @@ elif page == "🎯 Revenue Predictor":
                             number={'prefix': '$', 'suffix': 'M'},
                             gauge={
                                 'axis': {'range': [0, df['Revenue_Millions'].quantile(0.95)]},
-                                'bar': {'color': '#6366f1'},
+                                'bar': {'color': '#06b6d4'},
                                 'bgcolor': 'rgba(255,255,255,0.05)',
                                 'steps': [
                                     {'range': [0, median_rev], 'color': 'rgba(239,68,68,0.1)'},
@@ -552,7 +633,7 @@ elif page == "🎯 Revenue Predictor":
                                      'color': 'rgba(16,185,129,0.1)'}
                                 ],
                                 'threshold': {
-                                    'line': {'color': '#a855f7', 'width': 2},
+                                    'line': {'color': '#f472b6', 'width': 2},
                                     'thickness': 0.8,
                                     'value': avg_rev
                                 }
@@ -573,7 +654,7 @@ elif page == "🎯 Revenue Predictor":
                     <span style="font-size: 4rem;">🎬</span>
                     <p style="color: rgba(255,255,255,0.4); margin-top: 15px;">
                         Adjust the parameters on the left and click<br>
-                        <strong style="color: #6366f1;">Predict Revenue</strong> to see results
+                        <strong style="color: #06b6d4;">Predict Revenue</strong> to see results
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
@@ -643,14 +724,14 @@ elif page == "📊 Sentiment Trends":
                         y=genre_comp['Genre'],
                         x=genre_comp['Sentiment_Score'],
                         orientation='h',
-                        marker_color='#6366f1'
+                        marker_color='#06b6d4'
                     ))
                     fig.add_trace(go.Bar(
                         name='DistilBERT',
                         y=genre_comp['Genre'],
                         x=genre_comp['Transformer_Sentiment'],
                         orientation='h',
-                        marker_color='#a855f7'
+                        marker_color='#f472b6'
                     ))
                     fig.update_layout(
                         barmode='group',
@@ -693,11 +774,11 @@ elif page == "📊 Sentiment Trends":
 
             cols_to_plot = ['Sentiment_Score']
             names = ['VADER']
-            colors = ['#6366f1']
+            colors = ['#06b6d4']
             if has_transformer:
                 cols_to_plot.append('Transformer_Sentiment')
                 names.append('DistilBERT')
-                colors.append('#a855f7')
+                colors.append('#f472b6')
 
             fig = go.Figure()
             for col, name, color in zip(cols_to_plot, names, colors):
@@ -853,13 +934,13 @@ elif page == "🔍 Movie Comparison":
                     x=comp_df[title_col],
                     y=comp_df['Budget_Millions'],
                     name='Budget ($M)',
-                    marker_color='#6366f1'
+                    marker_color='#06b6d4'
                 ))
                 fig.add_trace(go.Bar(
                     x=comp_df[title_col],
                     y=comp_df['Revenue_Millions'],
                     name='Revenue ($M)',
-                    marker_color='#10b981'
+                    marker_color='#34d399'
                 ))
                 fig.update_layout(barmode='group', height=400)
                 apply_plotly_theme(fig)
@@ -899,19 +980,19 @@ elif page == "🤖 Model Performance":
             for i, (_, row) in enumerate(model_results.iterrows()):
                 with cols[i]:
                     is_best = row['R2'] == model_results['R2'].max()
-                    border_color = '#10b981' if is_best else 'rgba(255,255,255,0.1)'
-                    badge = '<span style="color: #10b981; font-size: 0.8rem;">★ BEST</span>' if is_best else ''
+                    border_color = '#34d399' if is_best else 'rgba(255,255,255,0.1)'
+                    badge = '<span style="color: #34d399; font-size: 0.8rem;">★ BEST</span>' if is_best else ''
 
                     st.markdown(f"""
                     <div class="glass-card" style="border-color: {border_color}; text-align: center;">
-                        <strong style="color: #a5b4fc;">{row['Model']}</strong> {badge}
+                        <strong style="color: #67e8f9;">{row['Model']}</strong> {badge}
                         <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
                         <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem;">R² Score</div>
-                        <div style="font-size: 1.8rem; font-weight: 700; color: #6366f1;">{row['R2']:.1%}</div>
+                        <div style="font-size: 1.8rem; font-weight: 700; color: #06b6d4;">{row['R2']:.1%}</div>
                         <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 8px;">MAE</div>
-                        <div style="font-size: 1.2rem; color: #a855f7;">${row['MAE']:.1f}M</div>
+                        <div style="font-size: 1.2rem; color: #f472b6;">${row['MAE']:.1f}M</div>
                         <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 8px;">RMSE</div>
-                        <div style="font-size: 1.2rem; color: #ec4899;">${row['RMSE']:.1f}M</div>
+                        <div style="font-size: 1.2rem; color: #e879f9;">${row['RMSE']:.1f}M</div>
                     </div>
                     """, unsafe_allow_html=True)
 
@@ -922,7 +1003,7 @@ elif page == "🤖 Model Performance":
                 x=model_results['Model'],
                 y=model_results['R2'],
                 name='R² Score',
-                marker_color='#6366f1',
+                marker_color='#06b6d4',
                 text=[f"{v:.1%}" for v in model_results['R2']],
                 textposition='outside'
             ))
@@ -962,7 +1043,7 @@ elif page == "🤖 Model Performance":
                 mode='markers',
                 name='Predictions',
                 marker=dict(
-                    color=predictions_df['Error_M'] if 'Error_M' in predictions_df.columns else '#6366f1',
+                    color=predictions_df['Error_M'] if 'Error_M' in predictions_df.columns else '#06b6d4',
                     colorscale='Viridis',
                     size=8,
                     showscale=True,
@@ -1048,7 +1129,7 @@ elif page == "🤖 Model Performance":
                 y=coef_df['Feature'],
                 x=coef_df['Coefficient'],
                 orientation='h',
-                marker=dict(color='#6366f1')
+                marker=dict(color='#06b6d4')
             ))
             fig.update_layout(
                 title='Top 20 Feature Coefficients (absolute)',
@@ -1100,7 +1181,7 @@ elif page == "🔴 Live Predictor":
                             st.image(m['poster_url'], use_container_width=True)
                         st.markdown(f"""
                         <div style="text-align: center; margin-bottom: 15px;">
-                            <strong style="color: #a5b4fc;">{m['title']}</strong><br>
+                            <strong style="color: #67e8f9;">{m['title']}</strong><br>
                             <span style="color: rgba(255,255,255,0.5);">⭐ {m['vote_average']}/10</span>
                         </div>
                         """, unsafe_allow_html=True)
@@ -1119,7 +1200,7 @@ elif page == "🔴 Live Predictor":
                             st.image(m['poster_url'], use_container_width=True)
                         st.markdown(f"""
                         <div style="text-align: center; margin-bottom: 15px;">
-                            <strong style="color: #a5b4fc;">{m['title']}</strong><br>
+                            <strong style="color: #67e8f9;">{m['title']}</strong><br>
                             <span style="color: rgba(255,255,255,0.5);">⭐ {m['vote_average']}/10</span>
                         </div>
                         """, unsafe_allow_html=True)
@@ -1166,11 +1247,11 @@ elif page == "🔴 Live Predictor":
                                 st.image(details['poster_url'], use_container_width=True)
 
                         with info_col:
-                            status_color = '#10b981' if details['status'] == 'Released' else '#f59e0b'
+                            status_color = '#34d399' if details['status'] == 'Released' else '#f59e0b'
                             st.markdown(f"""
                             <div class="glass-card">
-                                <h2 style="color: #e2e8f0; margin: 0;">{details['title']}</h2>
-                                <p style="color: #a5b4fc; font-style: italic;">{details.get('tagline', '')}</p>
+                                <h2 style="color: #e0f2fe; margin: 0;">{details['title']}</h2>
+                                <p style="color: #67e8f9; font-style: italic;">{details.get('tagline', '')}</p>
                                 <div style="display: flex; gap: 20px; flex-wrap: wrap; margin: 15px 0;">
                                     <span style="color: rgba(255,255,255,0.6);">📅 {details['release_date']}</span>
                                     <span style="color: rgba(255,255,255,0.6);">⏱️ {details['runtime']} min</span>
@@ -1178,12 +1259,12 @@ elif page == "🔴 Live Predictor":
                                     <span style="color: rgba(255,255,255,0.6);">⭐ {details['vote_average']}/10 ({details['vote_count']:,} votes)</span>
                                 </div>
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0;">
-                                    {''.join(f'<span style="background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4); border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; color: #a5b4fc;">{g}</span>' for g in details['genres'])}
+                                    {''.join(f'<span style="background: rgba(6,182,212,0.2); border: 1px solid rgba(6,182,212,0.4); border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; color: #67e8f9;">{g}</span>' for g in details['genres'])}
                                 </div>
                                 <p style="color: rgba(255,255,255,0.5); font-size: 0.9rem; margin-top: 10px;">
-                                    🎬 Director: <strong style="color: #e2e8f0;">{details['director'] or 'N/A'}</strong> &nbsp;•&nbsp;
-                                    ⭐ Lead: <strong style="color: #e2e8f0;">{details['lead_actor']}</strong> &nbsp;•&nbsp;
-                                    🏢 Studio: <strong style="color: #e2e8f0;">{details['primary_studio']}</strong>
+                                    🎬 Director: <strong style="color: #e0f2fe;">{details['director'] or 'N/A'}</strong> &nbsp;•&nbsp;
+                                    ⭐ Lead: <strong style="color: #e0f2fe;">{details['lead_actor']}</strong> &nbsp;•&nbsp;
+                                    🏢 Studio: <strong style="color: #e0f2fe;">{details['primary_studio']}</strong>
                                 </p>
                             </div>
                             """, unsafe_allow_html=True)
@@ -1207,7 +1288,7 @@ elif page == "🔴 Live Predictor":
                             </div>
                             """, unsafe_allow_html=True)
                         with m3:
-                            sent_color = '#10b981' if sentiment['vader_avg'] > 0.1 else '#ef4444' if sentiment['vader_avg'] < -0.1 else '#f59e0b'
+                            sent_color = '#34d399' if sentiment['vader_avg'] > 0.1 else '#ef4444' if sentiment['vader_avg'] < -0.1 else '#f59e0b'
                             st.markdown(f"""
                             <div class="metric-card">
                                 <div class="metric-label">Live Sentiment</div>
@@ -1216,7 +1297,7 @@ elif page == "🔴 Live Predictor":
                             </div>
                             """, unsafe_allow_html=True)
                         with m4:
-                            conf_color = '#10b981' if sentiment['confidence'] >= 0.6 else '#f59e0b' if sentiment['confidence'] >= 0.3 else '#ef4444'
+                            conf_color = '#34d399' if sentiment['confidence'] >= 0.6 else '#f59e0b' if sentiment['confidence'] >= 0.3 else '#ef4444'
                             st.markdown(f"""
                             <div class="metric-card">
                                 <div class="metric-label">Confidence</div>
@@ -1327,7 +1408,7 @@ elif page == "🔴 Live Predictor":
                                         </div>
                                         <div class="prediction-value">${predicted:,.1f}M</div>
                                         <div style="color: rgba(255,255,255,0.5); margin-top: 8px;">
-                                            ROI: <strong style="color: {'#10b981' if roi > 0 else '#ef4444'};">
+                                            ROI: <strong style="color: {'#34d399' if roi > 0 else '#ef4444'};">
                                             {roi:+.0f}%</strong>
                                         </div>
                                         <div style="color: rgba(255,255,255,0.3); font-size: 0.8rem; margin-top: 12px;">
@@ -1344,7 +1425,7 @@ elif page == "🔴 Live Predictor":
                                         st.markdown(f"""
                                         <div class="glass-card" style="text-align: center;">
                                             <div style="color: rgba(255,255,255,0.5);">Actual Revenue (TMDB)</div>
-                                            <div style="font-size: 1.5rem; font-weight: 700; color: #a855f7;">${actual:,.1f}M</div>
+                                            <div style="font-size: 1.5rem; font-weight: 700; color: #f472b6;">${actual:,.1f}M</div>
                                             <div style="color: rgba(255,255,255,0.4); margin-top: 5px;">
                                                 Error: ${error:,.1f}M &nbsp;•&nbsp; Accuracy: {accuracy:.0f}%
                                             </div>
@@ -1361,7 +1442,7 @@ elif page == "🔴 Live Predictor":
                                             number={'prefix': '$', 'suffix': 'M'},
                                             gauge={
                                                 'axis': {'range': [0, df['Revenue_Millions'].quantile(0.95)]},
-                                                'bar': {'color': '#6366f1'},
+                                                'bar': {'color': '#06b6d4'},
                                                 'bgcolor': 'rgba(255,255,255,0.05)',
                                                 'steps': [
                                                     {'range': [0, df['Revenue_Millions'].median()],
@@ -1372,7 +1453,7 @@ elif page == "🔴 Live Predictor":
                                                      'color': 'rgba(16,185,129,0.1)'}
                                                 ],
                                                 'threshold': {
-                                                    'line': {'color': '#a855f7', 'width': 2},
+                                                    'line': {'color': '#f472b6', 'width': 2},
                                                     'thickness': 0.8, 'value': avg_rev
                                                 }
                                             },
@@ -1398,14 +1479,14 @@ elif page == "🔴 Live Predictor":
                                     fig.add_trace(go.Histogram(
                                         x=sentiment['vader_scores'],
                                         nbinsx=20,
-                                        marker_color='#6366f1',
+                                        marker_color='#06b6d4',
                                         name='VADER'
                                     ))
                                     if sentiment['transformer_scores']:
                                         fig.add_trace(go.Histogram(
                                             x=sentiment['transformer_scores'],
                                             nbinsx=20,
-                                            marker_color='#a855f7',
+                                            marker_color='#f472b6',
                                             opacity=0.7,
                                             name='DistilBERT'
                                         ))
@@ -1424,7 +1505,7 @@ elif page == "🔴 Live Predictor":
                                     rating_badge = f"⭐ {r['rating']}/10" if r['rating'] else ""
                                     st.markdown(f"""
                                     <div class="glass-card" style="padding: 12px; margin: 5px 0;">
-                                        <strong style="color: #a5b4fc;">{r['author']}</strong>
+                                        <strong style="color: #67e8f9;">{r['author']}</strong>
                                         <span style="color: rgba(255,255,255,0.4); float: right;">{rating_badge}</span>
                                         <p style="color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-top: 8px;">{snippet}</p>
                                     </div>
@@ -1435,7 +1516,7 @@ elif page == "🔴 Live Predictor":
                     <span style="font-size: 4rem;">🔍</span>
                     <p style="color: rgba(255,255,255,0.4); margin-top: 15px;">
                         Type a movie name above to search TMDB<br>
-                        <strong style="color: #6366f1;">Live data • Real reviews • ML prediction</strong>
+                        <strong style="color: #06b6d4;">Live data • Real reviews • ML prediction</strong>
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1499,7 +1580,7 @@ elif page == "💼 Business Intelligence":
                     worst_case = similar['ROI'].quantile(0.1) * 100
 
                     # Display probability
-                    prob_color = '#10b981' if success_rate >= 50 else '#f59e0b' if success_rate >= 25 else '#ef4444'
+                    prob_color = '#34d399' if success_rate >= 50 else '#f59e0b' if success_rate >= 25 else '#ef4444'
                     st.markdown(f"""
                     <div class="prediction-box" style="border-color: {prob_color}40; background: linear-gradient(135deg, {prob_color}20 0%, {prob_color}10 100%);">
                         <div style="color: rgba(255,255,255,0.6);">
@@ -1608,11 +1689,11 @@ elif page == "💼 Business Intelligence":
             safest_genre = genre_stats.sort_values('success_rate', ascending=False).iloc[0]
             st.markdown(f"""
             <div class="glass-card">
-                <h3 style="color: #a5b4fc;">💡 Key Insights</h3>
+                <h3 style="color: #67e8f9;">💡 Key Insights</h3>
                 <ul style="color: rgba(255,255,255,0.7);">
-                    <li><strong style="color: #10b981;">{best_genre['Genre']}</strong> has the highest average ROI
+                    <li><strong style="color: #34d399;">{best_genre['Genre']}</strong> has the highest average ROI
                         at <strong>{best_genre['avg_roi']:.0f}%</strong></li>
-                    <li><strong style="color: #6366f1;">{safest_genre['Genre']}</strong> is the safest bet with
+                    <li><strong style="color: #06b6d4;">{safest_genre['Genre']}</strong> is the safest bet with
                         <strong>{safest_genre['success_rate']:.0f}%</strong> profitability rate</li>
                     <li>Average budget for top-ROI genre: <strong>${best_genre['avg_budget']:.0f}M</strong></li>
                 </ul>
@@ -1663,7 +1744,7 @@ elif page == "💼 Business Intelligence":
                         x='Budget_Millions',
                         y='Revenue_Millions',
                         hover_data=[title_col] if title_col else None,
-                        color_discrete_sequence=['rgba(99,102,241,0.5)'],
+                        color_discrete_sequence=['rgba(6,182,212,0.5)'],
                         labels={'Budget_Millions': 'Budget ($M)', 'Revenue_Millions': 'Revenue ($M)'}
                     )
                     # Highlight competitors
@@ -1671,10 +1752,10 @@ elif page == "💼 Business Intelligence":
                         x=competitors['Budget_Millions'],
                         y=competitors['Revenue_Millions'],
                         mode='markers+text',
-                        marker=dict(color='#10b981', size=12, symbol='star'),
+                        marker=dict(color='#34d399', size=12, symbol='star'),
                         text=competitors[title_col].apply(lambda x: x[:15] + '...' if len(str(x)) > 15 else x),
                         textposition='top center',
-                        textfont=dict(color='#10b981', size=10),
+                        textfont=dict(color='#34d399', size=10),
                         name='Similar Movies',
                         hovertemplate="<b>%{text}</b><br>Budget: $%{x:.0f}M<br>Revenue: $%{y:.0f}M<extra></extra>"
                     ))
@@ -1710,11 +1791,11 @@ elif page == "💼 Business Intelligence":
                     median_rev = competitors['Revenue_Millions'].median()
                     st.markdown(f"""
                     <div class="glass-card">
-                        <h3 style="color: #a5b4fc;">📊 Competitive Summary</h3>
+                        <h3 style="color: #67e8f9;">📊 Competitive Summary</h3>
                         <ul style="color: rgba(255,255,255,0.7);">
-                            <li>Avg revenue for similar movies: <strong style="color: #10b981;">${avg_rev:.0f}M</strong></li>
+                            <li>Avg revenue for similar movies: <strong style="color: #34d399;">${avg_rev:.0f}M</strong></li>
                             <li>Median revenue: <strong>${median_rev:.0f}M</strong></li>
-                            <li>Best performer: <strong style="color: #a855f7;">{competitors.iloc[0][title_col]}</strong>
+                            <li>Best performer: <strong style="color: #f472b6;">{competitors.iloc[0][title_col]}</strong>
                                 (${competitors.iloc[0]['Revenue_Millions']:.0f}M)</li>
                             <li>Expected range: ${competitors['Revenue_Millions'].quantile(0.25):.0f}M - ${competitors['Revenue_Millions'].quantile(0.75):.0f}M</li>
                         </ul>
